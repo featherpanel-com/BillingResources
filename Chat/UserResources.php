@@ -144,12 +144,13 @@ class UserResources
      *
      * @return int|false Resource ID or false on failure
      */
-    public static function create(array $data): int|false
+    public static function create(array $data): int | false
     {
         $required = ['user_id'];
         foreach ($required as $field) {
             if (!isset($data[$field])) {
                 App::getInstance(true)->getLogger()->error("Missing required field: $field");
+
                 return false;
             }
         }
@@ -162,6 +163,7 @@ class UserResources
         $existing = self::getByUserId((int) $data['user_id']);
         if ($existing !== null) {
             App::getInstance(true)->getLogger()->error('User resources already exist for user_id: ' . $data['user_id']);
+
             return false;
         }
 
@@ -196,6 +198,7 @@ class UserResources
 
         if (empty($data)) {
             App::getInstance(true)->getLogger()->error('No data to update');
+
             return false;
         }
 
@@ -233,6 +236,7 @@ class UserResources
         foreach ($payload as $resourceType => $value) {
             if (SettingsHelper::exceedsMaxLimit($resourceType, $value)) {
                 App::getInstance(true)->getLogger()->error("Resource value exceeds max limit: $resourceType = $value");
+
                 return false;
             }
         }
@@ -293,6 +297,7 @@ class UserResources
 
         if (empty($data)) {
             App::getInstance(true)->getLogger()->error('No data to update');
+
             return false;
         }
 
@@ -374,6 +379,7 @@ class UserResources
 
         if (!in_array($resourceType, $allowedFields, true)) {
             App::getInstance(true)->getLogger()->error("Invalid resource type: $resourceType");
+
             return false;
         }
 
@@ -472,6 +478,7 @@ class UserResources
         if ($row === null) {
             // Return default from settings (don't create DB row just for reading)
             $defaults = SettingsHelper::getDefaultResources();
+
             return $defaults[$resourceType] ?? 0;
         }
 
@@ -587,4 +594,3 @@ class UserResources
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
     }
 }
-
