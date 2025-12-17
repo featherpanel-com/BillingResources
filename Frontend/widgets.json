@@ -1,0 +1,11 @@
+[
+  {
+    "id": "billingresources-user-resources",
+    "component": "/billingresources/dist/widget.html",
+    "page": "dashboard",
+    "location": "before-server-list",
+    "enabled": true,
+    "priority": 10,
+    "size": "full"
+  }
+]

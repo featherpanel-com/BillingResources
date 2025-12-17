@@ -1,0 +1,209 @@
+<?php
+
+/*
+ * This file is part of FeatherPanel.
+ *
+ * MIT License
+ *
+ * Copyright (c) 2025 MythicalSystems
+ * Copyright (c) 2025 Cassian Gherman (NaysKutzu)
+ * Copyright (c) 2018 - 2021 Dane Everitt <dane@daneeveritt.com> and Contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+use App\App;
+use App\Permissions;
+use App\Helpers\ApiResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\RouteCollection;
+use App\Addons\billingresources\Controllers\User\ServerResourcesController;
+use App\Addons\billingresources\Controllers\User\BillingResourcesController as UserController;
+use App\Addons\billingresources\Controllers\Admin\BillingResourcesController as AdminController;
+
+return function (RouteCollection $routes): void {
+    // User Routes (require authentication)
+    // Get user's resources
+    App::getInstance(true)->registerAuthRoute(
+        $routes,
+        'billingresources-user-resources',
+        '/api/user/billingresources/resources',
+        function (Request $request) {
+            return (new UserController())->getResources($request);
+        },
+        ['GET']
+    );
+
+    // Get specific user resource
+    App::getInstance(true)->registerAuthRoute(
+        $routes,
+        'billingresources-user-resource',
+        '/api/user/billingresources/resources/{resourceType}',
+        function (Request $request, array $args) {
+            $resourceType = $args['resourceType'] ?? '';
+            if (empty($resourceType)) {
+                return ApiResponse::error('Resource type is required', 'RESOURCE_TYPE_REQUIRED', 400);
+            }
+
+            return (new UserController())->getResource($request, $resourceType);
+        },
+        ['GET']
+    );
+
+    // Get user servers with resources
+    App::getInstance(true)->registerAuthRoute(
+        $routes,
+        'billingresources-user-servers',
+        '/api/user/billingresources/servers',
+        function (Request $request) {
+            return (new UserController())->getServers($request);
+        },
+        ['GET']
+    );
+
+    // Server Routes (with server middleware for security)
+    // Get server resources with available limits
+    App::getInstance(true)->registerServerRoute(
+        $routes,
+        'billingresources-server-resources',
+        '/api/user/servers/{uuidShort}/billingresources',
+        function (Request $request, array $args) {
+            $uuidShort = $args['uuidShort'] ?? null;
+            if (!$uuidShort) {
+                return ApiResponse::error('Missing or invalid UUID short', 'INVALID_UUID_SHORT', 400);
+            }
+
+            return (new ServerResourcesController())->getServerResources($request, $uuidShort);
+        },
+        'uuidShort',
+        ['GET']
+    );
+
+    // Update server resources
+    App::getInstance(true)->registerServerRoute(
+        $routes,
+        'billingresources-server-resources-update',
+        '/api/user/servers/{uuidShort}/billingresources',
+        function (Request $request, array $args) {
+            $uuidShort = $args['uuidShort'] ?? null;
+            if (!$uuidShort) {
+                return ApiResponse::error('Missing or invalid UUID short', 'INVALID_UUID_SHORT', 400);
+            }
+
+            return (new ServerResourcesController())->updateServerResources($request, $uuidShort);
+        },
+        'uuidShort',
+        ['PATCH', 'PUT']
+    );
+
+    // Admin Routes
+    // Get all users with resources
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-users',
+        '/api/admin/billingresources/users',
+        function (Request $request) {
+            return (new AdminController())->getUsers($request);
+        },
+        Permissions::ADMIN_USERS_VIEW,
+        ['GET']
+    );
+
+    // Get single user resources
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-user-resources',
+        '/api/admin/billingresources/users/{userId}/resources',
+        function (Request $request, array $args) {
+            $userId = (int) ($args['userId'] ?? 0);
+            if (!$userId) {
+                return ApiResponse::error('Invalid user ID', 'INVALID_ID', 400);
+            }
+
+            return (new AdminController())->getUserResources($request, $userId);
+        },
+        Permissions::ADMIN_USERS_VIEW,
+        ['GET']
+    );
+
+    // Update user resources
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-user-resources-update',
+        '/api/admin/billingresources/users/{userId}/resources',
+        function (Request $request, array $args) {
+            $userId = (int) ($args['userId'] ?? 0);
+            if (!$userId) {
+                return ApiResponse::error('Invalid user ID', 'INVALID_ID', 400);
+            }
+
+            return (new AdminController())->updateUserResources($request, $userId);
+        },
+        Permissions::ADMIN_USERS_EDIT,
+        ['PATCH', 'PUT']
+    );
+
+    // Search users
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-search-users',
+        '/api/admin/billingresources/users/search',
+        function (Request $request) {
+            return (new AdminController())->searchUsers($request);
+        },
+        Permissions::ADMIN_USERS_VIEW,
+        ['GET']
+    );
+
+    // Get statistics
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-statistics',
+        '/api/admin/billingresources/statistics',
+        function (Request $request) {
+            return (new AdminController())->getStatistics($request);
+        },
+        Permissions::ADMIN_USERS_VIEW,
+        ['GET']
+    );
+
+    // Get settings
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-settings',
+        '/api/admin/billingresources/settings',
+        function (Request $request) {
+            return (new AdminController())->getSettings($request);
+        },
+        Permissions::ADMIN_USERS_VIEW,
+        ['GET']
+    );
+
+    // Update settings
+    App::getInstance(true)->registerAdminRoute(
+        $routes,
+        'billingresources-admin-settings-update',
+        '/api/admin/billingresources/settings',
+        function (Request $request) {
+            return (new AdminController())->updateSettings($request);
+        },
+        Permissions::ADMIN_USERS_EDIT,
+        ['PATCH', 'PUT']
+    );
+};

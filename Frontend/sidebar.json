@@ -1,0 +1,27 @@
+{
+  "client": {},
+  "admin": {
+    "/billingresources": {
+      "name": "Resources",
+      "icon": "💻",
+      "showBadge": false,
+      "redirect": "/billingresources",
+      "component": "/billingresources/dist/admin.html",
+      "description": "Manage resources and view usage",
+      "category": "admin",
+      "group": "Billing"
+    }
+  },
+  "server": {
+    "/billingresources": {
+      "name": "Resources",
+      "icon": "⚙️",
+      "showBadge": false,
+      "redirect": "/billingresources",
+      "component": "/billingresources/dist/server.html",
+      "description": "Manage server resource allocation",
+      "category": "server",
+      "group": "Configuration"
+    }
+  }
+}
