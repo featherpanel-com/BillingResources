@@ -2,14 +2,14 @@
   "client": {},
   "admin": {
     "/billingresources": {
-      "name": "Resources",
+      "name": "Resources Management",
       "icon": "💻",
       "showBadge": false,
       "redirect": "/billingresources",
       "component": "/billingresources/dist/admin.html",
       "description": "Manage resources and view usage",
       "category": "admin",
-      "group": "Billing"
+      "group": "Fremium Resources"
     }
   },
   "server": {
