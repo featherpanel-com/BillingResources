@@ -1,11 +1,11 @@
 {
   "client": {},
   "admin": {
-    "/billingresources": {
+    "/resources/management": {
       "name": "Resources Management",
       "icon": "💻",
       "showBadge": false,
-      "redirect": "/billingresources",
+      "redirect": "/resources/management",
       "component": "/billingresources/dist/admin.html",
       "description": "Manage resources and view usage",
       "category": "admin",

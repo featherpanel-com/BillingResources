@@ -259,48 +259,68 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="w-full space-y-6 p-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-primary/10">
-          <Server class="h-6 w-6 text-primary" />
+  <div class="min-h-screen p-4 md:p-8">
+    <div class="max-w-5xl mx-auto space-y-8">
+      <!-- Header Section -->
+      <div class="text-center space-y-4">
+        <div class="flex items-center justify-center gap-3">
+          <div class="relative">
+            <div
+              class="absolute inset-0 bg-primary/20 blur-2xl rounded-full"
+            ></div>
+            <Server class="relative h-12 w-12 text-primary" />
+          </div>
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-foreground">Server Resources</h1>
-          <p class="text-sm text-muted-foreground">
+          <h1
+            class="text-5xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent"
+          >
+            Server Resources
+          </h1>
+          <p class="text-lg text-muted-foreground mt-2">
             Manage resource allocation for this server within your limits
           </p>
         </div>
       </div>
-      <Button
-        v-if="serverData"
-        @click="openEditDialog"
-        variant="default"
-        size="sm"
-        :disabled="hasOverflow"
-      >
-        <Edit class="h-4 w-4 mr-2" />
-        Edit Resources
-      </Button>
+
+      <!-- Edit Button -->
+      <div v-if="serverData" class="flex justify-center mb-8">
+        <Button
+          @click="openEditDialog"
+          variant="default"
+          size="lg"
+          :disabled="hasOverflow"
+          class="gap-2"
+        >
+          <Edit class="h-5 w-5" />
+          Edit Resources
+        </Button>
+      </div>
     </div>
 
     <!-- Loading State -->
-    <div
+    <Card
       v-if="loading && !serverData"
-      class="flex flex-col items-center justify-center py-16"
+      class="p-8 md:p-10 border-2 shadow-xl bg-card/50 backdrop-blur-sm"
     >
-      <Loader2 class="h-10 w-10 animate-spin text-primary mb-4" />
-      <p class="text-sm text-muted-foreground">Loading server resources...</p>
-    </div>
+      <div class="flex flex-col items-center justify-center py-12">
+        <Loader2 class="h-8 w-8 animate-spin text-primary mb-4" />
+        <p class="text-sm text-muted-foreground">Loading server resources...</p>
+      </div>
+    </Card>
 
     <!-- Error State -->
-    <Card v-else-if="error && !loading" class="p-6 border-destructive/50">
+    <Card
+      v-else-if="error && !loading"
+      class="p-8 md:p-10 border-2 border-destructive/50 bg-destructive/5"
+    >
       <div class="flex items-center gap-3 mb-4">
-        <AlertCircle class="h-5 w-5 text-destructive" />
-        <h3 class="text-lg font-semibold text-destructive">Error</h3>
+        <AlertCircle class="h-6 w-6 text-destructive" />
+        <div>
+          <h3 class="text-lg font-semibold text-destructive">Error</h3>
+          <p class="text-sm text-muted-foreground">{{ error }}</p>
+        </div>
       </div>
-      <p class="text-sm text-muted-foreground mb-4">{{ error }}</p>
       <Button @click="loadServerResources" variant="outline">
         <Loader2 class="h-4 w-4 mr-2" />
         Retry
@@ -312,7 +332,7 @@ onMounted(() => {
       <!-- Server-Specific Overflow Warning -->
       <Card
         v-if="serverHasOverflow"
-        class="p-6 border-red-500/50 bg-red-500/10"
+        class="p-6 border-2 border-red-500/50 bg-red-500/10"
       >
         <div class="flex items-start gap-3">
           <AlertCircle class="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
@@ -343,7 +363,7 @@ onMounted(() => {
       <!-- Total Overflow Warning -->
       <Card
         v-if="hasOverflow && !serverHasOverflow"
-        class="p-6 border-red-500/50 bg-red-500/10"
+        class="p-6 border-2 border-red-500/50 bg-red-500/10"
       >
         <div class="flex items-start gap-3">
           <AlertCircle class="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
@@ -372,505 +392,527 @@ onMounted(() => {
       </Card>
 
       <!-- Available Resources Summary -->
-      <Card class="p-6 border-border/50">
-        <div class="flex items-center gap-2 mb-6">
-          <TrendingUp class="h-5 w-5 text-primary" />
-          <h2 class="text-lg font-semibold">Available Resources</h2>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.memory >
-                  serverData.limits.memory_limit &&
-                serverData.limits.memory_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.memory >
-                  serverData.limits.memory_limit &&
-                serverData.limits.memory_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <MemoryStick
-                class="h-4 w-4"
+      <Card class="p-8 md:p-10 border-2 shadow-xl bg-card/50 backdrop-blur-sm">
+        <div class="space-y-4">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 rounded-lg bg-primary/10">
+              <TrendingUp class="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h2 class="text-2xl font-bold">Available Resources</h2>
+              <p class="text-sm text-muted-foreground">
+                Your remaining resource capacity
+              </p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.memory >
+                    serverData.limits.memory_limit &&
+                  serverData.limits.memory_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.memory >
+                    serverData.limits.memory_limit &&
+                  serverData.limits.memory_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <MemoryStick
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.memory >
+                      serverData.limits.memory_limit &&
+                    serverData.limits.memory_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Memory</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.memory >
                     serverData.limits.memory_limit &&
                   serverData.limits.memory_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Memory</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.memory >
-                  serverData.limits.memory_limit &&
-                serverData.limits.memory_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ formatBytes(serverData.available.memory_limit) }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.memory >
-                  serverData.limits.memory_limit &&
-                serverData.limits.memory_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ formatBytes(serverData.limits.memory_limit) }}
-              <span
-                v-if="
+                {{ formatBytes(serverData.available.memory_limit) }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.memory >
                     serverData.limits.memory_limit &&
                   serverData.limits.memory_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ formatBytes(serverData.server.resources.memory) }}
-              </span>
+                of {{ formatBytes(serverData.limits.memory_limit) }}
+                <span
+                  v-if="
+                    serverData.server.resources.memory >
+                      serverData.limits.memory_limit &&
+                    serverData.limits.memory_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server: {{ formatBytes(serverData.server.resources.memory) }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.cpu > serverData.limits.cpu_limit &&
-                serverData.limits.cpu_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.cpu > serverData.limits.cpu_limit &&
-                serverData.limits.cpu_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <Cpu
-                class="h-4 w-4"
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.cpu >
+                    serverData.limits.cpu_limit &&
+                  serverData.limits.cpu_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.cpu >
+                    serverData.limits.cpu_limit &&
+                  serverData.limits.cpu_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Cpu
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.cpu >
+                      serverData.limits.cpu_limit &&
+                    serverData.limits.cpu_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >CPU</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.cpu >
                     serverData.limits.cpu_limit &&
                   serverData.limits.cpu_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >CPU</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.cpu > serverData.limits.cpu_limit &&
-                serverData.limits.cpu_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ formatPercentage(serverData.available.cpu_limit) }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.cpu > serverData.limits.cpu_limit &&
-                serverData.limits.cpu_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ formatPercentage(serverData.limits.cpu_limit) }}
-              <span
-                v-if="
+                {{ formatPercentage(serverData.available.cpu_limit) }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.cpu >
                     serverData.limits.cpu_limit &&
                   serverData.limits.cpu_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ formatPercentage(serverData.server.resources.cpu) }}
-              </span>
+                of {{ formatPercentage(serverData.limits.cpu_limit) }}
+                <span
+                  v-if="
+                    serverData.server.resources.cpu >
+                      serverData.limits.cpu_limit &&
+                    serverData.limits.cpu_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server:
+                  {{ formatPercentage(serverData.server.resources.cpu) }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.disk >
-                  serverData.limits.disk_limit &&
-                serverData.limits.disk_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.disk >
-                  serverData.limits.disk_limit &&
-                serverData.limits.disk_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <HardDrive
-                class="h-4 w-4"
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.disk >
+                    serverData.limits.disk_limit &&
+                  serverData.limits.disk_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.disk >
+                    serverData.limits.disk_limit &&
+                  serverData.limits.disk_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <HardDrive
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.disk >
+                      serverData.limits.disk_limit &&
+                    serverData.limits.disk_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Disk</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.disk >
                     serverData.limits.disk_limit &&
                   serverData.limits.disk_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Disk</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.disk >
-                  serverData.limits.disk_limit &&
-                serverData.limits.disk_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ formatBytes(serverData.available.disk_limit) }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.disk >
-                  serverData.limits.disk_limit &&
-                serverData.limits.disk_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ formatBytes(serverData.limits.disk_limit) }}
-              <span
-                v-if="
+                {{ formatBytes(serverData.available.disk_limit) }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.disk >
                     serverData.limits.disk_limit &&
                   serverData.limits.disk_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ formatBytes(serverData.server.resources.disk) }}
-              </span>
+                of {{ formatBytes(serverData.limits.disk_limit) }}
+                <span
+                  v-if="
+                    serverData.server.resources.disk >
+                      serverData.limits.disk_limit &&
+                    serverData.limits.disk_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server: {{ formatBytes(serverData.server.resources.disk) }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.database_limit >
-                  serverData.limits.database_limit &&
-                serverData.limits.database_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.database_limit >
-                  serverData.limits.database_limit &&
-                serverData.limits.database_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <Database
-                class="h-4 w-4"
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.database_limit >
+                    serverData.limits.database_limit &&
+                  serverData.limits.database_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.database_limit >
+                    serverData.limits.database_limit &&
+                  serverData.limits.database_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Database
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.database_limit >
+                      serverData.limits.database_limit &&
+                    serverData.limits.database_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Databases</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.database_limit >
                     serverData.limits.database_limit &&
                   serverData.limits.database_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Databases</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.database_limit >
-                  serverData.limits.database_limit &&
-                serverData.limits.database_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ serverData.available.database_limit }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.database_limit >
-                  serverData.limits.database_limit &&
-                serverData.limits.database_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ serverData.limits.database_limit }}
-              <span
-                v-if="
+                {{ serverData.available.database_limit }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.database_limit >
                     serverData.limits.database_limit &&
                   serverData.limits.database_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ serverData.server.resources.database_limit }}
-              </span>
+                of {{ serverData.limits.database_limit }}
+                <span
+                  v-if="
+                    serverData.server.resources.database_limit >
+                      serverData.limits.database_limit &&
+                    serverData.limits.database_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server: {{ serverData.server.resources.database_limit }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.backup_limit >
-                  serverData.limits.backup_limit &&
-                serverData.limits.backup_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.backup_limit >
-                  serverData.limits.backup_limit &&
-                serverData.limits.backup_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <Archive
-                class="h-4 w-4"
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.backup_limit >
+                    serverData.limits.backup_limit &&
+                  serverData.limits.backup_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.backup_limit >
+                    serverData.limits.backup_limit &&
+                  serverData.limits.backup_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Archive
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.backup_limit >
+                      serverData.limits.backup_limit &&
+                    serverData.limits.backup_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Backups</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.backup_limit >
                     serverData.limits.backup_limit &&
                   serverData.limits.backup_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Backups</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.backup_limit >
-                  serverData.limits.backup_limit &&
-                serverData.limits.backup_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ serverData.available.backup_limit }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.backup_limit >
-                  serverData.limits.backup_limit &&
-                serverData.limits.backup_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ serverData.limits.backup_limit }}
-              <span
-                v-if="
+                {{ serverData.available.backup_limit }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.backup_limit >
                     serverData.limits.backup_limit &&
                   serverData.limits.backup_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ serverData.server.resources.backup_limit }}
-              </span>
+                of {{ serverData.limits.backup_limit }}
+                <span
+                  v-if="
+                    serverData.server.resources.backup_limit >
+                      serverData.limits.backup_limit &&
+                    serverData.limits.backup_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server: {{ serverData.server.resources.backup_limit }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            class="p-4 rounded-lg border transition-colors"
-            :class="{
-              'bg-red-500/10 border-red-500/50':
-                serverData.server.resources.allocation_limit >
-                  serverData.limits.allocation_limit &&
-                serverData.limits.allocation_limit > 0,
-              'bg-muted/30 border-border/50': !(
-                serverData.server.resources.allocation_limit >
-                  serverData.limits.allocation_limit &&
-                serverData.limits.allocation_limit > 0
-              ),
-            }"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <Network
-                class="h-4 w-4"
+            <div
+              class="p-4 rounded-lg border transition-colors"
+              :class="{
+                'bg-red-500/10 border-red-500/50':
+                  serverData.server.resources.allocation_limit >
+                    serverData.limits.allocation_limit &&
+                  serverData.limits.allocation_limit > 0,
+                'bg-muted/30 border-border/50': !(
+                  serverData.server.resources.allocation_limit >
+                    serverData.limits.allocation_limit &&
+                  serverData.limits.allocation_limit > 0
+                ),
+              }"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <Network
+                  class="h-4 w-4"
+                  :class="
+                    serverData.server.resources.allocation_limit >
+                      serverData.limits.allocation_limit &&
+                    serverData.limits.allocation_limit > 0
+                      ? 'text-red-400'
+                      : 'text-primary'
+                  "
+                />
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Allocations</Label
+                >
+              </div>
+              <div
+                class="text-xl font-bold mb-1"
                 :class="
                   serverData.server.resources.allocation_limit >
                     serverData.limits.allocation_limit &&
                   serverData.limits.allocation_limit > 0
                     ? 'text-red-400'
-                    : 'text-primary'
+                    : ''
                 "
-              />
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Allocations</Label
               >
-            </div>
-            <div
-              class="text-xl font-bold mb-1"
-              :class="
-                serverData.server.resources.allocation_limit >
-                  serverData.limits.allocation_limit &&
-                serverData.limits.allocation_limit > 0
-                  ? 'text-red-400'
-                  : ''
-              "
-            >
-              {{ serverData.available.allocation_limit }}
-            </div>
-            <div
-              class="text-xs"
-              :class="
-                serverData.server.resources.allocation_limit >
-                  serverData.limits.allocation_limit &&
-                serverData.limits.allocation_limit > 0
-                  ? 'text-red-300/80'
-                  : 'text-muted-foreground'
-              "
-            >
-              of {{ serverData.limits.allocation_limit }}
-              <span
-                v-if="
+                {{ serverData.available.allocation_limit }}
+              </div>
+              <div
+                class="text-xs"
+                :class="
                   serverData.server.resources.allocation_limit >
                     serverData.limits.allocation_limit &&
                   serverData.limits.allocation_limit > 0
+                    ? 'text-red-300/80'
+                    : 'text-muted-foreground'
                 "
-                class="block text-red-400 font-semibold mt-1"
               >
-                Server: {{ serverData.server.resources.allocation_limit }}
-              </span>
+                of {{ serverData.limits.allocation_limit }}
+                <span
+                  v-if="
+                    serverData.server.resources.allocation_limit >
+                      serverData.limits.allocation_limit &&
+                    serverData.limits.allocation_limit > 0
+                  "
+                  class="block text-red-400 font-semibold mt-1"
+                >
+                  Server: {{ serverData.server.resources.allocation_limit }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </Card>
 
       <!-- Current Server Resources -->
-      <Card class="p-6 border-border/50">
-        <div class="flex items-center gap-2 mb-6">
-          <Server class="h-5 w-5 text-primary" />
-          <h2 class="text-lg font-semibold">
-            Current Resources: {{ serverData.server.name }}
-          </h2>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <MemoryStick class="h-4 w-4 text-primary" />
-              </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Memory</Label
-              >
+      <Card class="p-8 md:p-10 border-2 shadow-xl bg-card/50 backdrop-blur-sm">
+        <div class="space-y-4">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 rounded-lg bg-primary/10">
+              <Server class="h-6 w-6 text-primary" />
             </div>
-            <div class="text-lg font-bold">
-              {{ formatBytes(serverData.server.resources.memory) }}
+            <div>
+              <h2 class="text-2xl font-bold">
+                Current Resources: {{ serverData.server.name }}
+              </h2>
+              <p class="text-sm text-muted-foreground">
+                Resources allocated to this server
+              </p>
             </div>
           </div>
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <Cpu class="h-4 w-4 text-primary" />
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <MemoryStick class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Memory</Label
+                >
               </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >CPU</Label
-              >
-            </div>
-            <div class="text-lg font-bold">
-              {{ formatPercentage(serverData.server.resources.cpu) }}
-            </div>
-          </div>
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <HardDrive class="h-4 w-4 text-primary" />
+              <div class="text-lg font-bold">
+                {{ formatBytes(serverData.server.resources.memory) }}
               </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Disk</Label
-              >
             </div>
-            <div class="text-lg font-bold">
-              {{ formatBytes(serverData.server.resources.disk) }}
-            </div>
-          </div>
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <Database class="h-4 w-4 text-primary" />
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <Cpu class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >CPU</Label
+                >
               </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Databases</Label
-              >
-            </div>
-            <div class="text-lg font-bold">
-              {{ serverData.server.resources.database_limit }}
-            </div>
-          </div>
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <Archive class="h-4 w-4 text-primary" />
+              <div class="text-lg font-bold">
+                {{ formatPercentage(serverData.server.resources.cpu) }}
               </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Backups</Label
-              >
             </div>
-            <div class="text-lg font-bold">
-              {{ serverData.server.resources.backup_limit }}
-            </div>
-          </div>
-          <div
-            class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
-          >
-            <div class="flex items-center gap-2 mb-3">
-              <div class="p-1.5 rounded-md bg-primary/10">
-                <Network class="h-4 w-4 text-primary" />
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <HardDrive class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Disk</Label
+                >
               </div>
-              <Label
-                class="text-xs font-semibold text-muted-foreground uppercase"
-                >Allocations</Label
-              >
+              <div class="text-lg font-bold">
+                {{ formatBytes(serverData.server.resources.disk) }}
+              </div>
             </div>
-            <div class="text-lg font-bold">
-              {{ serverData.server.resources.allocation_limit }}
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <Database class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Databases</Label
+                >
+              </div>
+              <div class="text-lg font-bold">
+                {{ serverData.server.resources.database_limit }}
+              </div>
+            </div>
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <Archive class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Backups</Label
+                >
+              </div>
+              <div class="text-lg font-bold">
+                {{ serverData.server.resources.backup_limit }}
+              </div>
+            </div>
+            <div
+              class="p-4 rounded-lg bg-card border border-border/50 hover:border-primary/50 transition-colors"
+            >
+              <div class="flex items-center gap-2 mb-3">
+                <div class="p-1.5 rounded-md bg-primary/10">
+                  <Network class="h-4 w-4 text-primary" />
+                </div>
+                <Label
+                  class="text-xs font-semibold text-muted-foreground uppercase"
+                  >Allocations</Label
+                >
+              </div>
+              <div class="text-lg font-bold">
+                {{ serverData.server.resources.allocation_limit }}
+              </div>
             </div>
           </div>
         </div>
