@@ -49,13 +49,29 @@ class SettingsHelper
             return self::getDefaultResourcesStructure();
         }
 
-        $decoded = json_decode($defaultsJson, true);
-        if (!is_array($decoded)) {
+        // Decode HTML entities in case the value was HTML-encoded
+        $decodedJson = html_entity_decode($defaultsJson, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = json_decode($decodedJson, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             return self::getDefaultResourcesStructure();
         }
 
-        // Merge with defaults to ensure all keys exist
-        return array_merge(self::getDefaultResourcesStructure(), $decoded);
+        // Start with decoded values (prioritize DB), then fill missing keys with defaults
+        // This ensures saved values (including 0) are preserved
+        $defaults = self::getDefaultResourcesStructure();
+        $result = [];
+        foreach ($defaults as $key => $defaultValue) {
+            // Use decoded value if it exists (even if 0), otherwise use default
+            // Explicitly check for key existence to preserve 0 values
+            if (array_key_exists($key, $decoded)) {
+                $result[$key] = (int) $decoded[$key];
+            } else {
+                $result[$key] = (int) $defaultValue;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -65,7 +81,13 @@ class SettingsHelper
      */
     public static function setDefaultResources(array $defaults): void
     {
-        PluginSettings::setSetting('billingresources', 'default_resources', json_encode($defaults));
+        // Ensure all required keys exist, fill missing ones with defaults
+        $structure = self::getDefaultResourcesStructure();
+        $completeDefaults = [];
+        foreach ($structure as $key => $defaultValue) {
+            $completeDefaults[$key] = array_key_exists($key, $defaults) ? (int) $defaults[$key] : (int) $defaultValue;
+        }
+        PluginSettings::setSetting('billingresources', 'default_resources', json_encode($completeDefaults, JSON_NUMERIC_CHECK));
     }
 
     /**
@@ -80,13 +102,29 @@ class SettingsHelper
             return self::getMaxResourcesStructure();
         }
 
-        $decoded = json_decode($maxJson, true);
-        if (!is_array($decoded)) {
+        // Decode HTML entities in case the value was HTML-encoded
+        $decodedJson = html_entity_decode($maxJson, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = json_decode($decodedJson, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             return self::getMaxResourcesStructure();
         }
 
-        // Merge with defaults to ensure all keys exist
-        return array_merge(self::getMaxResourcesStructure(), $decoded);
+        // Start with decoded values (prioritize DB), then fill missing keys with defaults
+        // This ensures saved values (including 0) are preserved
+        $maxDefaults = self::getMaxResourcesStructure();
+        $result = [];
+        foreach ($maxDefaults as $key => $defaultValue) {
+            // Use decoded value if it exists (even if 0), otherwise use default
+            // Explicitly check for key existence to preserve 0 values
+            if (array_key_exists($key, $decoded)) {
+                $result[$key] = (int) $decoded[$key];
+            } else {
+                $result[$key] = (int) $defaultValue;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -96,7 +134,13 @@ class SettingsHelper
      */
     public static function setMaxResources(array $max): void
     {
-        PluginSettings::setSetting('billingresources', 'max_resources', json_encode($max));
+        // Ensure all required keys exist, fill missing ones with defaults
+        $structure = self::getMaxResourcesStructure();
+        $completeMax = [];
+        foreach ($structure as $key => $defaultValue) {
+            $completeMax[$key] = array_key_exists($key, $max) ? (int) $max[$key] : (int) $defaultValue;
+        }
+        PluginSettings::setSetting('billingresources', 'max_resources', json_encode($completeMax, JSON_NUMERIC_CHECK));
     }
 
     /**

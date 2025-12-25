@@ -489,9 +489,16 @@ class BillingResourcesController
             'allocation_limit',
         ];
 
+        $savedDefaults = null;
+        $savedMax = null;
+
         // Update default resources if provided
         if (isset($data['default_resources']) && is_array($data['default_resources'])) {
-            $defaults = [];
+            // Get existing defaults to preserve fields not being updated
+            $existingDefaults = SettingsHelper::getDefaultResources();
+            $defaults = $existingDefaults;
+            
+            // Update only the fields provided in the request
             foreach ($allowedFields as $field) {
                 if (array_key_exists($field, $data['default_resources'])) {
                     $value = (int) $data['default_resources'][$field];
@@ -501,17 +508,19 @@ class BillingResourcesController
                     $defaults[$field] = $value;
                 }
             }
-            if (!empty($defaults)) {
-                // Merge with existing defaults
-                $existingDefaults = SettingsHelper::getDefaultResources();
-                $defaults = array_merge($existingDefaults, $defaults);
-                SettingsHelper::setDefaultResources($defaults);
-            }
+            
+            // Always save the complete structure
+            SettingsHelper::setDefaultResources($defaults);
+            $savedDefaults = $defaults;
         }
 
         // Update max resources if provided
         if (isset($data['max_resources']) && is_array($data['max_resources'])) {
-            $max = [];
+            // Get existing max to preserve fields not being updated
+            $existingMax = SettingsHelper::getMaxResources();
+            $max = $existingMax;
+            
+            // Update only the fields provided in the request
             foreach ($allowedFields as $field) {
                 if (array_key_exists($field, $data['max_resources'])) {
                     $value = (int) $data['max_resources'][$field];
@@ -521,12 +530,10 @@ class BillingResourcesController
                     $max[$field] = $value;
                 }
             }
-            if (!empty($max)) {
-                // Merge with existing max
-                $existingMax = SettingsHelper::getMaxResources();
-                $max = array_merge($existingMax, $max);
-                SettingsHelper::setMaxResources($max);
-            }
+            
+            // Always save the complete structure
+            SettingsHelper::setMaxResources($max);
+            $savedMax = $max;
         }
 
         // Log activity
@@ -537,7 +544,11 @@ class BillingResourcesController
             'ip_address' => CloudFlareRealIP::getRealIP(),
         ]);
 
-        $settings = SettingsHelper::getAllSettings();
+        // Build response from saved data or read from DB if nothing was updated
+        $settings = [
+            'default_resources' => $savedDefaults !== null ? $savedDefaults : SettingsHelper::getDefaultResources(),
+            'max_resources' => $savedMax !== null ? $savedMax : SettingsHelper::getMaxResources(),
+        ];
 
         return ApiResponse::success($settings, 'Settings updated successfully', 200);
     }
