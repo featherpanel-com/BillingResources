@@ -233,8 +233,8 @@ class ServerResourcesController
             // Validate and prepare memory
             if (isset($data['memory'])) {
                 $newMemory = (int) $data['memory'];
-                if ($newMemory < 0) {
-                    $errors[] = 'Memory cannot be negative';
+                if ($newMemory < 1) {
+                    $errors[] = 'Memory must be at least 1 MB';
                 } elseif ($newMemory > $limits['memory_limit'] && $limits['memory_limit'] > 0) {
                     $errors[] = 'Memory exceeds your total limit. Limit: ' . $limits['memory_limit'] . ' MB';
                 } elseif ($limits['memory_limit'] < $used['memory_limit'] + $newMemory && $limits['memory_limit'] > 0) {
@@ -247,8 +247,8 @@ class ServerResourcesController
             // Validate and prepare CPU
             if (isset($data['cpu'])) {
                 $newCpu = (int) $data['cpu'];
-                if ($newCpu < 0) {
-                    $errors[] = 'CPU cannot be negative';
+                if ($newCpu < 1) {
+                    $errors[] = 'CPU must be at least 1%';
                 } elseif ($newCpu > $limits['cpu_limit'] && $limits['cpu_limit'] > 0) {
                     $errors[] = 'CPU exceeds your total limit. Limit: ' . $limits['cpu_limit'] . '%';
                 } elseif ($limits['cpu_limit'] < $used['cpu_limit'] + $newCpu && $limits['cpu_limit'] > 0) {
@@ -261,8 +261,8 @@ class ServerResourcesController
             // Validate and prepare disk
             if (isset($data['disk'])) {
                 $newDisk = (int) $data['disk'];
-                if ($newDisk < 0) {
-                    $errors[] = 'Disk cannot be negative';
+                if ($newDisk < 1) {
+                    $errors[] = 'Disk must be at least 1 MB';
                 } elseif ($newDisk > $limits['disk_limit'] && $limits['disk_limit'] > 0) {
                     $errors[] = 'Disk exceeds your total limit. Limit: ' . $limits['disk_limit'] . ' MB';
                 } elseif ($limits['disk_limit'] < $used['disk_limit'] + $newDisk && $limits['disk_limit'] > 0) {
@@ -315,8 +315,8 @@ class ServerResourcesController
             // Validate and prepare allocation_limit
             if (isset($data['allocation_limit'])) {
                 $newAllocLimit = (int) $data['allocation_limit'];
-                if ($newAllocLimit < 0) {
-                    $errors[] = 'Allocation limit cannot be negative';
+                if ($newAllocLimit < 1) {
+                    $errors[] = 'Allocation limit must be at least 1';
                 } else {
                     $currentAllocations = Allocation::getByServerId((int) $server['id']);
                     $currentAllocCount = count($currentAllocations);

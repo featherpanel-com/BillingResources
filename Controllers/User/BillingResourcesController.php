@@ -394,8 +394,8 @@ class BillingResourcesController
         // Validate and prepare memory
         if (isset($data['memory'])) {
             $newMemory = (int) $data['memory'];
-            if ($newMemory < 0) {
-                $errors[] = 'Memory cannot be negative';
+            if ($newMemory < 1) {
+                $errors[] = 'Memory must be at least 1 MB';
             } elseif ($newMemory > $available['memory_limit'] + (int) ($server['memory'] ?? 0)) {
                 $errors[] = 'Memory exceeds available limit. Available: ' . ($available['memory_limit'] + (int) ($server['memory'] ?? 0)) . ' MB';
             } else {
@@ -406,8 +406,8 @@ class BillingResourcesController
         // Validate and prepare CPU
         if (isset($data['cpu'])) {
             $newCpu = (int) $data['cpu'];
-            if ($newCpu < 0) {
-                $errors[] = 'CPU cannot be negative';
+            if ($newCpu < 1) {
+                $errors[] = 'CPU must be at least 1%';
             } elseif ($newCpu > $available['cpu_limit'] + (int) ($server['cpu'] ?? 0)) {
                 $errors[] = 'CPU exceeds available limit. Available: ' . ($available['cpu_limit'] + (int) ($server['cpu'] ?? 0)) . '%';
             } else {
@@ -418,8 +418,8 @@ class BillingResourcesController
         // Validate and prepare disk
         if (isset($data['disk'])) {
             $newDisk = (int) $data['disk'];
-            if ($newDisk < 0) {
-                $errors[] = 'Disk cannot be negative';
+            if ($newDisk < 1) {
+                $errors[] = 'Disk must be at least 1 MB';
             } elseif ($newDisk > $available['disk_limit'] + (int) ($server['disk'] ?? 0)) {
                 $errors[] = 'Disk exceeds available limit. Available: ' . ($available['disk_limit'] + (int) ($server['disk'] ?? 0)) . ' MB';
             } else {
@@ -468,8 +468,8 @@ class BillingResourcesController
         // Validate and prepare allocation_limit
         if (isset($data['allocation_limit'])) {
             $newAllocLimit = (int) $data['allocation_limit'];
-            if ($newAllocLimit < 0) {
-                $errors[] = 'Allocation limit cannot be negative';
+            if ($newAllocLimit < 1) {
+                $errors[] = 'Allocation limit must be at least 1';
             } else {
                 // Check current allocations count
                 $currentAllocations = Allocation::getByServerId($serverId);

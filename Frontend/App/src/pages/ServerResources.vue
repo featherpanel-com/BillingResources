@@ -92,6 +92,16 @@ const serverHasOverflow = computed(() => {
   return serverData.value.server_overflow?.has_overflow || false;
 });
 
+// Check if values are below minimum allowed
+const hasInvalidMinimums = computed(() => {
+  return (
+    editForm.value.memory < 1 ||
+    editForm.value.cpu < 1 ||
+    editForm.value.disk < 1 ||
+    editForm.value.allocation_limit < 1
+  );
+});
+
 // Check if edit form would cause overflow
 const wouldCauseOverflow = computed(() => {
   if (!serverData.value) return false;
@@ -230,9 +240,26 @@ const closeEditDialog = () => {
   showEditDialog.value = false;
 };
 
+const MIN_MEMORY = 1;
+const MIN_CPU = 1;
+const MIN_DISK = 1;
+const MIN_ALLOCATION = 1;
+
 const saveServerResources = async () => {
   if (wouldCauseOverflow.value) {
     toast.error("Cannot save: This would exceed your resource limits");
+    return;
+  }
+
+  if (
+    editForm.value.memory < MIN_MEMORY ||
+    editForm.value.cpu < MIN_CPU ||
+    editForm.value.disk < MIN_DISK ||
+    editForm.value.allocation_limit < MIN_ALLOCATION
+  ) {
+    toast.error(
+      "Memory, CPU, Disk must be at least 1. Allocation limit must be at least 1."
+    );
     return;
   }
 
@@ -930,9 +957,26 @@ onMounted(() => {
           </DialogDescription>
         </DialogHeader>
 
+        <!-- Minimum values warning -->
+        <div
+          v-if="hasInvalidMinimums"
+          class="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 mb-4"
+        >
+          <AlertCircle class="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-amber-400 mb-1">
+              Minimum values required
+            </p>
+            <p class="text-xs text-amber-300/80">
+              Memory, CPU, and Disk must be at least 1. Allocation limit must
+              be at least 1.
+            </p>
+          </div>
+        </div>
+
         <!-- Overflow Warning in Dialog -->
         <div
-          v-if="wouldCauseOverflow"
+          v-else-if="wouldCauseOverflow"
           class="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3 mb-4"
         >
           <AlertCircle class="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
@@ -958,7 +1002,7 @@ onMounted(() => {
               id="memory"
               v-model.number="editForm.memory"
               type="number"
-              :min="0"
+              :min="1"
               :max="serverData.limits.memory_limit || undefined"
               class="w-full"
             />
@@ -978,7 +1022,7 @@ onMounted(() => {
               id="cpu"
               v-model.number="editForm.cpu"
               type="number"
-              :min="0"
+              :min="1"
               :max="serverData.limits.cpu_limit || undefined"
               class="w-full"
             />
@@ -999,7 +1043,7 @@ onMounted(() => {
               id="disk"
               v-model.number="editForm.disk"
               type="number"
-              :min="0"
+              :min="1"
               :max="serverData.limits.disk_limit || undefined"
               class="w-full"
             />
@@ -1065,7 +1109,7 @@ onMounted(() => {
               id="allocation_limit"
               v-model.number="editForm.allocation_limit"
               type="number"
-              :min="0"
+              :min="1"
               :max="serverData.limits.allocation_limit || undefined"
               class="w-full"
             />
@@ -1080,7 +1124,7 @@ onMounted(() => {
           <Button variant="outline" @click="closeEditDialog">Cancel</Button>
           <Button
             @click="saveServerResources"
-            :disabled="saving || wouldCauseOverflow"
+            :disabled="saving || wouldCauseOverflow || hasInvalidMinimums"
           >
             <Loader2 v-if="saving" class="h-4 w-4 mr-2 animate-spin" />
             <Save v-else class="h-4 w-4 mr-2" />
