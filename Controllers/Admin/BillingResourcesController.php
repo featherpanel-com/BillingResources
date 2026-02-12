@@ -17,6 +17,7 @@
 
 namespace App\Addons\billingresources\Controllers\Admin;
 
+use App\App;
 use App\Chat\User;
 use App\Chat\Activity;
 use App\Chat\Database;
@@ -207,6 +208,8 @@ class BillingResourcesController
         ];
 
         $resources = [];
+        $validationErrors = [];
+
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $data)) {
                 $value = (int) $data[$field];
@@ -214,7 +217,32 @@ class BillingResourcesController
                     return ApiResponse::error("Invalid value for {$field}. Must be non-negative", 'INVALID_VALUE', 400);
                 }
                 $resources[$field] = $value;
+
+                // Check max limits (0 = unlimited)
+                $maxLimit = SettingsHelper::getMaxLimit($field);
+                if ($maxLimit > 0 && $value > $maxLimit) {
+                    $labels = [
+                        'memory_limit' => 'Memory',
+                        'cpu_limit' => 'CPU',
+                        'disk_limit' => 'Disk',
+                        'server_limit' => 'Servers',
+                        'database_limit' => 'Databases',
+                        'backup_limit' => 'Backups',
+                        'allocation_limit' => 'Allocations',
+                    ];
+                    $unit = in_array($field, ['memory_limit', 'disk_limit'], true) ? ' MB' : (in_array($field, ['cpu_limit'], true) ? '%' : '');
+                    $validationErrors[] = ($labels[$field] ?? $field) . ': ' . $value . $unit . ' exceeds maximum allowed (' . $maxLimit . $unit . ')';
+                }
             }
+        }
+
+        if (!empty($validationErrors)) {
+            return ApiResponse::error(
+                'Resource values exceed maximum limits. ' . implode('. ', $validationErrors),
+                'EXCEEDS_MAX_LIMIT',
+                400,
+                ['errors' => $validationErrors]
+            );
         }
 
         if (empty($resources)) {
@@ -222,7 +250,13 @@ class BillingResourcesController
         }
 
         if (!ResourcesHelper::updateUserResources($userId, $resources)) {
-            return ApiResponse::error('Failed to update resources', 'UPDATE_RESOURCES_FAILED', 500);
+            App::getInstance(true)->getLogger()->error("Failed to update user resources for userId={$userId}: updateUserResources returned false");
+            return ApiResponse::error(
+                'Failed to update resources. This may be a database error – please try again or contact support.',
+                'UPDATE_RESOURCES_FAILED',
+                500,
+                ['user_id' => $userId]
+            );
         }
 
         $updatedResources = ResourcesHelper::getUserResourcesOrDefault($userId);
