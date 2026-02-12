@@ -4,6 +4,7 @@
     "/resources/management": {
       "name": "Resources Management",
       "icon": "💻",
+      "lucideIcon": "cpu",
       "showBadge": false,
       "redirect": "/resources/management",
       "component": "/billingresources/dist/admin.html",
@@ -16,6 +17,7 @@
     "/billingresources": {
       "name": "Resources",
       "icon": "⚙️",
+      "lucideIcon": "cpu",
       "showBadge": false,
       "redirect": "/billingresources",
       "component": "/billingresources/dist/server.html",
