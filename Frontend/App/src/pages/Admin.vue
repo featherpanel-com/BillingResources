@@ -30,6 +30,7 @@ import {
   Server,
   Archive,
   Network,
+  ExternalLink,
 } from "lucide-vue-next";
 import {
   useResourcesAdminAPI,
@@ -267,6 +268,10 @@ const formatNumber = (num: number): string => {
   return new Intl.NumberFormat().format(num);
 };
 
+const userEditUrl = (uuid: string): string => {
+  return `/admin/users/${uuid}/edit`;
+};
+
 const loadSettings = async () => {
   loadingSettings.value = true;
   try {
@@ -471,6 +476,14 @@ onMounted(() => {
                       </div>
                     </div>
                     <div class="flex gap-2 ml-4">
+                      <a
+                        :href="userEditUrl(user.uuid)"
+                        target="_top"
+                        class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                      >
+                        <ExternalLink class="h-4 w-4" />
+                        View account
+                      </a>
                       <Button
                         @click="openResourceForm(user)"
                         variant="outline"
@@ -941,9 +954,19 @@ onMounted(() => {
               <h3 class="text-lg font-semibold">
                 Edit Resources - {{ editingUser.username }}
               </h3>
-              <Button @click="closeResourceForm" variant="ghost" size="sm">
-                <X class="h-4 w-4" />
-              </Button>
+              <div class="flex items-center gap-2">
+                <a
+                  :href="userEditUrl(editingUser.uuid)"
+                  target="_top"
+                  class="inline-flex items-center gap-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                >
+                  <ExternalLink class="h-4 w-4" />
+                  View panel account
+                </a>
+                <Button @click="closeResourceForm" variant="ghost" size="sm">
+                  <X class="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <form @submit.prevent="saveResources" class="space-y-4">
