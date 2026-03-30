@@ -19,6 +19,7 @@ export default defineConfig({
         admin: "./admin.html",
         widget: "./widget.html",
         server: "./server.html",
+        "admin-user-resources-widget": "./admin-user-resources-widget.html",
       },
     },
   },

@@ -251,6 +251,7 @@ class BillingResourcesController
 
         if (!ResourcesHelper::updateUserResources($userId, $resources)) {
             App::getInstance(true)->getLogger()->error("Failed to update user resources for userId={$userId}: updateUserResources returned false");
+
             return ApiResponse::error(
                 'Failed to update resources. This may be a database error – please try again or contact support.',
                 'UPDATE_RESOURCES_FAILED',
