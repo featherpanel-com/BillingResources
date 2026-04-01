@@ -1,24 +1,13 @@
 [
-  {
-    "id": "billingresources-dashboard-resources",
-    "component": "billingresources/dist/widget.html",
-    "page": "dashboard",
-    "location": "before-server-list",
-    "enabled": true,
-    "priority": 10,
-    "pluginName": "Billing Resources",
-    "title": "Your resources",
-    "description": "Freemium resource limits and usage from Billing Resources.",
-    "size": "full",
-    "card": {
-      "enabled": true,
-      "padding": "none",
-      "header": { "show": true }
-    },
-    "iframe": {
-      "minHeight": "220px"
-    }
-  },
+{
+	"id": "billingresources-user-resources",
+	"component": "/billingresources/dist/widget.html",
+	"page": "dashboard",
+	"location": "before-server-list",
+	"enabled": true,
+	"priority": 10,
+	"size": "full"
+},
   {
     "id": "billingresources-admin-user-resources",
     "component": "billingresources/dist/admin-user-resources-widget.html",
