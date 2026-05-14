@@ -83,65 +83,59 @@ const loadResources = async () => {
 };
 
 onMounted(() => {
-  // Remove backgrounds from body and html
-  if (typeof document !== "undefined") {
-    document.body.style.background = "transparent";
-    document.documentElement.style.background = "transparent";
-    const app = document.getElementById("app");
-    if (app) {
-      app.style.background = "transparent";
-    }
-  }
   loadResources();
 });
 </script>
 
 <template>
-  <div class="w-full overflow-hidden">
-    <div class="mb-2">
-      <h3 class="text-base font-bold text-foreground">Resource Usage</h3>
-      <p class="text-[10px] text-muted-foreground">
+  <div class="w-full overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+    <div class="border-b border-border/25 bg-transparent px-4 py-3.5 sm:px-5">
+      <h3 class="text-foreground text-base font-bold tracking-tight sm:text-lg">
+        Resource Usage
+      </h3>
+      <p class="text-muted-foreground mt-0.5 max-w-xl text-[11px] leading-snug sm:text-xs">
         Monitor your resource consumption across all servers
       </p>
     </div>
 
-    <div
-      v-if="loading && !resourcesData"
-      class="flex items-center justify-center py-4"
-    >
+    <div class="p-3 sm:p-4">
       <div
-        class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
-      ></div>
-    </div>
-
-    <div
-      v-else-if="resourcesData"
-      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3"
-    >
-      <Card
-        v-for="resource in resources"
-        :key="resource.key"
-        class="w-full px-3 py-3 gap-0! hover:shadow-md transition-all duration-200 hover:-translate-y-1 border-border/40 bg-transparent backdrop-blur-none shadow-none"
+        v-if="loading && !resourcesData"
+        class="flex min-h-[120px] items-center justify-center py-6"
       >
-        <div class="flex flex-col items-center text-center">
-          <div
-            class="w-10 h-10 rounded-lg bg-linear-to-br from-primary/20 to-primary/10 flex items-center justify-center text-xl mb-2"
-          >
-            {{ resource.icon }}
-          </div>
+        <div
+          class="border-primary h-7 w-7 animate-spin rounded-full border-2 border-t-transparent"
+        ></div>
+      </div>
+
+      <div
+        v-else-if="resourcesData"
+        class="resource-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 lg:gap-3"
+      >
+        <Card
+          v-for="resource in resources"
+          :key="resource.key"
+          class="w-full gap-0! rounded-xl border border-border/40 bg-transparent px-2.5 py-3 shadow-none transition-all duration-200 hover:border-primary/30 sm:px-3 dark:bg-transparent dark:hover:bg-muted/15"
+        >
+          <div class="flex flex-col items-center text-center">
+            <div
+              class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/25 to-primary/5 text-xl shadow-inner ring-1 ring-primary/10 sm:h-11 sm:w-11"
+            >
+              {{ resource.icon }}
+            </div>
           <div class="w-full">
             <div
-              class="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+              class="text-muted-foreground mb-1.5 text-[9px] font-semibold uppercase tracking-wider"
             >
               {{ resource.label }}
             </div>
-            <div class="flex items-baseline justify-center gap-1 mb-1.5">
-              <span class="text-sm font-bold text-foreground">
+            <div class="mb-1.5 flex items-baseline justify-center gap-1">
+              <span class="text-foreground text-sm font-bold tabular-nums sm:text-[15px]">
                 {{
                   resource.format(
                     (resourcesData.used[
                       resource.key as keyof typeof resourcesData.used
-                    ] as number) || 0
+                    ] as number) || 0,
                   )
                 }}
               </span>
@@ -149,7 +143,12 @@ onMounted(() => {
               <span
                 class="text-xs font-medium"
                 :class="
-                  ((resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) === 0 || (resourcesData.max_limits[resource.key as keyof typeof resourcesData.max_limits] as number) === 0)
+                  (resourcesData.limits[
+                    resource.key as keyof typeof resourcesData.limits
+                  ] as number) === 0 ||
+                  (resourcesData.max_limits[
+                    resource.key as keyof typeof resourcesData.max_limits
+                  ] as number) === 0
                     ? 'text-green-500'
                     : 'text-muted-foreground'
                 "
@@ -165,7 +164,7 @@ onMounted(() => {
                     : resource.format(
                         (resourcesData.limits[
                           resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0
+                        ] as number) || 0,
                       )
                 }}
               </span>
@@ -173,8 +172,12 @@ onMounted(() => {
 
             <div
               v-if="
-                (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) !== 0 &&
-                (resourcesData.max_limits[resource.key as keyof typeof resourcesData.max_limits] as number) !== 0
+                (resourcesData.limits[
+                  resource.key as keyof typeof resourcesData.limits
+                ] as number) !== 0 &&
+                (resourcesData.max_limits[
+                  resource.key as keyof typeof resourcesData.max_limits
+                ] as number) !== 0
               "
               class="space-y-1"
             >
@@ -183,10 +186,50 @@ onMounted(() => {
                 <span
                   class="px-1 py-0.5 rounded text-[9px] font-semibold"
                   :class="{
-                    'bg-red-600/20 text-red-400 border border-red-500/30': getBadgeClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'overflow',
-                    'bg-red-500/15 text-red-400': getBadgeClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'high',
-                    'bg-yellow-500/15 text-yellow-400': getBadgeClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'medium',
-                    'bg-green-500/15 text-green-400': getBadgeClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'low',
+                    'bg-red-600/20 text-red-400 border border-red-500/30':
+                      getBadgeClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'overflow',
+                    'bg-red-500/15 text-red-400':
+                      getBadgeClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'high',
+                    'bg-yellow-500/15 text-yellow-400':
+                      getBadgeClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'medium',
+                    'bg-green-500/15 text-green-400':
+                      getBadgeClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'low',
                   }"
                 >
                   {{
@@ -196,22 +239,78 @@ onMounted(() => {
                       ] as number) || 0,
                       (resourcesData.limits[
                         resource.key as keyof typeof resourcesData.limits
-                      ] as number) || 0
+                      ] as number) || 0,
                     )
                   }}%
                 </span>
               </div>
               <div
-                class="w-full h-1.5 bg-muted/50 rounded-full overflow-hidden"
+                class="bg-muted/60 h-1.5 w-full overflow-hidden rounded-full ring-1 ring-inset ring-border/30 dark:bg-muted/40"
               >
                 <div
                   class="h-full rounded-full transition-all duration-500"
                   :class="{
-                    'bg-linear-to-r from-red-600 to-red-700 animate-pulse': isOverflow((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0),
-                    'bg-linear-to-r from-red-500 to-red-600': !isOverflow((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0) && getProgressClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'danger',
-                    'bg-linear-to-r from-yellow-500 to-yellow-600': getProgressClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'warning',
-                    'bg-linear-to-r from-blue-500 to-indigo-500': getProgressClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === '',
-                    'bg-linear-to-r from-green-500 to-green-600': getProgressClass(getUsagePercentage((resourcesData.used[resource.key as keyof typeof resourcesData.used] as number) || 0, (resourcesData.limits[resource.key as keyof typeof resourcesData.limits] as number) || 0)) === 'success',
+                    'bg-linear-to-r from-red-600 to-red-700 animate-pulse':
+                      isOverflow(
+                        (resourcesData.used[
+                          resource.key as keyof typeof resourcesData.used
+                        ] as number) || 0,
+                        (resourcesData.limits[
+                          resource.key as keyof typeof resourcesData.limits
+                        ] as number) || 0,
+                      ),
+                    'bg-linear-to-r from-red-500 to-red-600':
+                      !isOverflow(
+                        (resourcesData.used[
+                          resource.key as keyof typeof resourcesData.used
+                        ] as number) || 0,
+                        (resourcesData.limits[
+                          resource.key as keyof typeof resourcesData.limits
+                        ] as number) || 0,
+                      ) &&
+                      getProgressClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'danger',
+                    'bg-linear-to-r from-yellow-500 to-yellow-600':
+                      getProgressClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'warning',
+                    'bg-linear-to-r from-blue-500 to-indigo-500':
+                      getProgressClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === '',
+                    'bg-linear-to-r from-green-500 to-green-600':
+                      getProgressClass(
+                        getUsagePercentage(
+                          (resourcesData.used[
+                            resource.key as keyof typeof resourcesData.used
+                          ] as number) || 0,
+                          (resourcesData.limits[
+                            resource.key as keyof typeof resourcesData.limits
+                          ] as number) || 0,
+                        ),
+                      ) === 'success',
                   }"
                   :style="{
                     width: `${Math.min(
@@ -221,9 +320,9 @@ onMounted(() => {
                         ] as number) || 0,
                         (resourcesData.limits[
                           resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0
+                        ] as number) || 0,
                       ),
-                      100
+                      100,
                     )}%`,
                   }"
                 ></div>
@@ -231,11 +330,12 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+        </Card>
+      </div>
 
-    <div v-else class="text-center py-4 text-muted-foreground">
-      <p class="text-xs">Failed to load resources</p>
+      <div v-else class="text-muted-foreground py-8 text-center">
+        <p class="text-xs">Failed to load resources</p>
+      </div>
     </div>
   </div>
 </template>
@@ -243,13 +343,13 @@ onMounted(() => {
 <style scoped>
 /* Center the last 3 cards (5th, 6th, 7th) on the second row for large screens */
 @media (min-width: 1024px) {
-  .grid > :nth-child(5) {
+  .resource-grid > :nth-child(5) {
     grid-column-start: 1;
   }
-  .grid > :nth-child(6) {
+  .resource-grid > :nth-child(6) {
     grid-column-start: 2;
   }
-  .grid > :nth-child(7) {
+  .resource-grid > :nth-child(7) {
     grid-column-start: 3;
   }
 }

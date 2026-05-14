@@ -1,32 +1,38 @@
 [
-{
-	"id": "billingresources-user-resources",
-	"component": "/billingresources/dist/widget.html",
-	"page": "dashboard",
-	"location": "before-server-list",
-	"enabled": true,
-	"priority": 10,
-	"size": "full"
-},
-  {
-    "id": "billingresources-admin-user-resources",
-    "component": "billingresources/dist/admin-user-resources-widget.html",
-    "page": "admin-users-edit",
-    "location": "bottom-of-page",
-    "enabled": true,
-    "priority": 70,
-    "pluginName": "Billing Resources",
-    "title": "Resource limits",
-    "description": "Memory, CPU, disk, servers, databases, backups, and allocations for this user.",
-    "icon": "BR",
-    "size": "full",
-    "card": {
-      "enabled": true,
-      "padding": "none",
-      "header": { "show": true }
-    },
-    "iframe": {
-      "minHeight": "620px"
-    }
-  }
+	{
+		"id": "billingresources-user-resources",
+		"component": "/billingresources/dist/widget.html",
+		"page": "dashboard",
+		"location": "before-server-list",
+		"enabled": true,
+		"priority": 10,
+		"size": "full",
+		"borderless": true,
+		"iframe": {
+			"minHeight": "490px"
+		}
+	},
+	{
+		"id": "billingresources-admin-user-resources",
+		"component": "billingresources/dist/admin-user-resources-widget.html",
+		"page": "admin-users-edit",
+		"location": "bottom-of-page",
+		"enabled": true,
+		"priority": 70,
+		"pluginName": "Billing Resources",
+		"title": "Resource limits",
+		"description": "Memory, CPU, disk, servers, databases, backups, and allocations for this user.",
+		"icon": "BR",
+		"size": "full",
+		"card": {
+			"enabled": true,
+			"padding": "none",
+			"header": {
+				"show": true
+			}
+		},
+		"iframe": {
+			"minHeight": "620px"
+		}
+	}
 ]

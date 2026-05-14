@@ -144,7 +144,7 @@ onMounted(() => {
       </p>
 
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <HardDrive class="h-3.5 w-3.5" />
             Memory (MB)
@@ -153,7 +153,7 @@ onMounted(() => {
           <Input id="br-mem" v-model.number="form.memory_limit" type="number" min="0" step="1" />
           <p class="text-xs text-muted-foreground mt-1.5">≈ {{ formatBytes(form.memory_limit) }}</p>
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Cpu class="h-3.5 w-3.5" />
             CPU (%)
@@ -161,7 +161,7 @@ onMounted(() => {
           <Label class="sr-only" for="br-cpu">CPU</Label>
           <Input id="br-cpu" v-model.number="form.cpu_limit" type="number" min="0" max="1000" step="1" />
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Database class="h-3.5 w-3.5" />
             Disk (MB)
@@ -170,7 +170,7 @@ onMounted(() => {
           <Input id="br-disk" v-model.number="form.disk_limit" type="number" min="0" step="1" />
           <p class="text-xs text-muted-foreground mt-1.5">≈ {{ formatBytes(form.disk_limit) }}</p>
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Server class="h-3.5 w-3.5" />
             Servers
@@ -178,7 +178,7 @@ onMounted(() => {
           <Label class="sr-only" for="br-srv">Servers</Label>
           <Input id="br-srv" v-model.number="form.server_limit" type="number" min="0" step="1" />
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Database class="h-3.5 w-3.5" />
             Databases
@@ -186,7 +186,7 @@ onMounted(() => {
           <Label class="sr-only" for="br-db">Databases</Label>
           <Input id="br-db" v-model.number="form.database_limit" type="number" min="0" step="1" />
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Archive class="h-3.5 w-3.5" />
             Backups
@@ -194,7 +194,7 @@ onMounted(() => {
           <Label class="sr-only" for="br-bu">Backups</Label>
           <Input id="br-bu" v-model.number="form.backup_limit" type="number" min="0" step="1" />
         </Card>
-        <Card class="p-4 border-border/60 bg-card/40 sm:col-span-2 lg:col-span-3">
+        <Card class="border-border/50 bg-transparent p-4 shadow-none sm:col-span-2 lg:col-span-3">
           <div class="flex items-center gap-2 text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
             <Network class="h-3.5 w-3.5" />
             Allocations / ports

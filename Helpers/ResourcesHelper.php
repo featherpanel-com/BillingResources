@@ -17,6 +17,9 @@
 
 namespace App\Addons\billingresources\Helpers;
 
+use App\Chat\Backup;
+use App\Chat\Allocation;
+use App\Chat\ServerDatabase;
 use App\Addons\billingresources\Chat\UserResources;
 
 /**
@@ -293,10 +296,11 @@ class ResourcesHelper
     }
 
     /**
-     * Calculate used resources from server limits.
+     * Calculate used resources from servers.
      *
-     * This sums up the resource LIMITS set on servers (memory, cpu, disk, database_limit, backup_limit, allocation_limit),
-     * NOT the actual usage. This is the standard way to calculate resource consumption.
+     * Memory, CPU, and disk are summed from each server's configured limits (reserved amounts).
+     * Database, backup, and allocation counts are summed from actual records linked to each server
+     * (allocated databases, backups, and IP/port allocations), not from the server's limit columns.
      *
      * @param int $userId User ID
      * @param array|null $excludeServerIds Array of server IDs to exclude from calculation (optional)
@@ -329,13 +333,19 @@ class ResourcesHelper
                 continue;
             }
 
-            // Sum up the LIMITS set on servers (not actual usage)
+            // Sum reserved compute/storage from server configuration
             $used['memory_limit'] += (int) ($server['memory'] ?? 0);
             $used['cpu_limit'] += (int) ($server['cpu'] ?? 0);
             $used['disk_limit'] += (int) ($server['disk'] ?? 0);
-            $used['database_limit'] += (int) ($server['database_limit'] ?? 0);
-            $used['backup_limit'] += (int) ($server['backup_limit'] ?? 0);
-            $used['allocation_limit'] += (int) ($server['allocation_limit'] ?? 0);
+
+            // Count actual allocated resources (not server limit columns)
+            $databases = ServerDatabase::getDatabasesByServerId($serverId);
+            $backups = Backup::getBackupsByServerId($serverId);
+            $allocations = Allocation::getByServerId($serverId);
+
+            $used['database_limit'] += is_array($databases) ? count($databases) : 0;
+            $used['backup_limit'] += is_array($backups) ? count($backups) : 0;
+            $used['allocation_limit'] += is_array($allocations) ? count($allocations) : 0;
         }
 
         // Server limit is just the count
