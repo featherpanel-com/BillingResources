@@ -1,78 +1,183 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { Card } from "@/components/ui/card";
+import { ref, onMounted, computed, type Component } from "vue";
 import { useResourcesAPI } from "@/composables/useResourcesAPI";
-import type { UserResourcesResponse } from "@/composables/useResourcesAPI";
+import type {
+  UserResourcesResponse,
+  ResourceLimits,
+} from "@/composables/useResourcesAPI";
+import {
+  Loader2,
+  AlertCircle,
+  Activity,
+  MemoryStick,
+  Cpu,
+  HardDrive,
+  Server,
+  Database,
+  Archive,
+  Network,
+  Infinity as InfinityIcon,
+} from "lucide-vue-next";
 
-const { loading, getResources } = useResourcesAPI();
+const { loading, error, getResources } = useResourcesAPI();
 const resourcesData = ref<UserResourcesResponse | null>(null);
+
+type ResourceKey = keyof ResourceLimits;
+
+interface ResourceDef {
+  key: ResourceKey;
+  label: string;
+  icon: Component;
+  accent: string;
+  format: (v: number) => string;
+}
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 MB";
-  const mb = bytes;
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`;
-  }
-  return `${Math.round(mb)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} GB`;
+  return `${Math.round(bytes)} MB`;
 };
 
-const formatPercentage = (value: number): string => {
-  return `${value}%`;
-};
+const formatPercentage = (value: number): string => `${value}%`;
 
 const getUsagePercentage = (used: number, limit: number): number => {
   if (limit === 0) return 0;
   return Math.min(Math.round((used / limit) * 100), 100);
 };
 
-const getProgressClass = (percentage: number): string => {
+const getProgressTone = (
+  percentage: number,
+  overflow: boolean,
+): "overflow" | "danger" | "warning" | "normal" | "success" => {
+  if (overflow) return "overflow";
   if (percentage >= 90) return "danger";
   if (percentage >= 70) return "warning";
-  if (percentage >= 50) return "";
+  if (percentage >= 50) return "normal";
   return "success";
 };
 
-const getBadgeClass = (percentage: number): string => {
-  if (percentage >= 100) return "overflow";
-  if (percentage >= 90) return "high";
-  if (percentage >= 70) return "medium";
-  return "low";
-};
-
 const isOverflow = (used: number, limit: number): boolean => {
-  if (limit === 0) return false; // Unlimited
+  if (limit === 0) return false;
   return used > limit;
 };
 
-const resources = [
-  { key: "memory_limit", label: "Memory", icon: "💾", format: formatBytes },
-  { key: "cpu_limit", label: "CPU", icon: "⚡", format: formatPercentage },
-  { key: "disk_limit", label: "Storage", icon: "💿", format: formatBytes },
+const resourceDefs: ResourceDef[] = [
+  {
+    key: "memory_limit",
+    label: "Memory",
+    icon: MemoryStick,
+    accent: "text-violet-400",
+    format: formatBytes,
+  },
+  {
+    key: "cpu_limit",
+    label: "CPU",
+    icon: Cpu,
+    accent: "text-amber-400",
+    format: formatPercentage,
+  },
+  {
+    key: "disk_limit",
+    label: "Storage",
+    icon: HardDrive,
+    accent: "text-sky-400",
+    format: formatBytes,
+  },
   {
     key: "server_limit",
     label: "Servers",
-    icon: "🖥️",
-    format: (v: number) => v.toString(),
+    icon: Server,
+    accent: "text-emerald-400",
+    format: (v) => v.toString(),
   },
   {
     key: "database_limit",
     label: "Databases",
-    icon: "🗄️",
-    format: (v: number) => v.toString(),
+    icon: Database,
+    accent: "text-cyan-400",
+    format: (v) => v.toString(),
   },
   {
     key: "backup_limit",
     label: "Backups",
-    icon: "📦",
-    format: (v: number) => v.toString(),
+    icon: Archive,
+    accent: "text-orange-400",
+    format: (v) => v.toString(),
   },
   {
     key: "allocation_limit",
     label: "Ports",
-    icon: "🌐",
-    format: (v: number) => v.toString(),
+    icon: Network,
+    accent: "text-indigo-400",
+    format: (v) => v.toString(),
   },
 ];
+
+const progressBarClass: Record<
+  ReturnType<typeof getProgressTone>,
+  string
+> = {
+  overflow: "bg-red-500",
+  danger: "bg-red-500",
+  warning: "bg-amber-500",
+  normal: "bg-primary/70",
+  success: "bg-emerald-500",
+};
+
+const badgeClass: Record<
+  ReturnType<typeof getProgressTone>,
+  string
+> = {
+  overflow: "text-red-400",
+  danger: "text-red-400",
+  warning: "text-amber-400",
+  normal: "text-muted-foreground",
+  success: "text-emerald-400",
+};
+
+const resourceItems = computed(() => {
+  if (!resourcesData.value) return [];
+
+  return resourceDefs.map((def) => {
+    const used = resourcesData.value!.used[def.key] || 0;
+    const limit = resourcesData.value!.limits[def.key] || 0;
+    const maxLimit = resourcesData.value!.max_limits[def.key] || 0;
+    const isUnlimited = limit === 0 || maxLimit === 0;
+    const overflow = !isUnlimited && isOverflow(used, limit);
+    const percentage = isUnlimited ? 0 : getUsagePercentage(used, limit);
+    const tone = isUnlimited ? "success" : getProgressTone(percentage, overflow);
+
+    return {
+      ...def,
+      used,
+      limit,
+      isUnlimited,
+      overflow,
+      percentage,
+      tone,
+      usedLabel: def.format(used),
+      limitLabel: isUnlimited ? "∞" : def.format(limit),
+    };
+  });
+});
+
+const statusLabel = computed(() => {
+  const items = resourceItems.value.filter((r) => !r.isUnlimited);
+  const critical = items.filter((r) => r.overflow || r.percentage >= 90).length;
+  const warning = items.filter(
+    (r) => !r.overflow && r.percentage >= 70 && r.percentage < 90,
+  ).length;
+
+  if (critical > 0) return { text: `${critical} critical`, tone: "critical" as const };
+  if (warning > 0) return { text: `${warning} warning`, tone: "warning" as const };
+  return { text: "Healthy", tone: "healthy" as const };
+});
+
+const statusClass = {
+  critical: "text-red-400 bg-red-500/10 border-red-500/25",
+  warning: "text-amber-400 bg-amber-500/10 border-amber-500/25",
+  healthy: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
+};
 
 const loadResources = async () => {
   try {
@@ -88,269 +193,134 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="w-full overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-    <div class="border-b border-border/25 bg-transparent px-4 py-3.5 sm:px-5">
-      <h3 class="text-foreground text-base font-bold tracking-tight sm:text-lg">
-        Resource Usage
-      </h3>
-      <p class="text-muted-foreground mt-0.5 max-w-xl text-[11px] leading-snug sm:text-xs">
-        Monitor your resource consumption across all servers
-      </p>
+  <div class="w-full rounded-xl border border-border/35 bg-transparent">
+    <div
+      class="flex items-center justify-between gap-3 border-b border-border/20 px-4 py-2.5"
+    >
+      <div class="flex min-w-0 items-center gap-2.5">
+        <div
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15"
+        >
+          <Activity class="text-primary h-4 w-4" />
+        </div>
+        <div class="min-w-0">
+          <h3
+            class="text-foreground truncate text-sm font-semibold tracking-tight sm:text-base"
+          >
+            Resource Usage
+          </h3>
+          <p class="text-muted-foreground truncate text-[11px] sm:text-xs">
+            Across all your servers
+          </p>
+        </div>
+      </div>
+
+      <span
+        v-if="resourcesData"
+        class="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium"
+        :class="statusClass[statusLabel.tone]"
+      >
+        <AlertCircle
+          v-if="statusLabel.tone === 'critical'"
+          class="h-3 w-3"
+        />
+        {{ statusLabel.text }}
+      </span>
     </div>
 
-    <div class="p-3 sm:p-4">
+    <div class="p-3">
       <div
         v-if="loading && !resourcesData"
-        class="flex min-h-[120px] items-center justify-center py-6"
+        class="flex items-center justify-center gap-2 py-8"
       >
-        <div
-          class="border-primary h-7 w-7 animate-spin rounded-full border-2 border-t-transparent"
-        ></div>
+        <Loader2 class="text-primary h-5 w-5 animate-spin" />
+        <span class="text-muted-foreground text-xs">Loading resources…</span>
       </div>
 
       <div
         v-else-if="resourcesData"
-        class="resource-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-4 lg:gap-3"
+        class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-4"
       >
-        <Card
-          v-for="resource in resources"
-          :key="resource.key"
-          class="w-full gap-0! rounded-xl border border-border/40 bg-transparent px-2.5 py-3 shadow-none transition-all duration-200 hover:border-primary/30 sm:px-3 dark:bg-transparent dark:hover:bg-muted/15"
+        <div
+          v-for="item in resourceItems"
+          :key="item.key"
+          class="rounded-lg border border-border/30 bg-muted/5 px-2.5 py-2 transition-colors hover:border-border/50 hover:bg-muted/10 sm:px-3 sm:py-2.5"
+          :class="{ 'border-red-500/35 bg-red-500/5': item.overflow }"
         >
-          <div class="flex flex-col items-center text-center">
-            <div
-              class="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/25 to-primary/5 text-xl shadow-inner ring-1 ring-primary/10 sm:h-11 sm:w-11"
-            >
-              {{ resource.icon }}
-            </div>
-          <div class="w-full">
-            <div
-              class="text-muted-foreground mb-1.5 text-[9px] font-semibold uppercase tracking-wider"
-            >
-              {{ resource.label }}
-            </div>
-            <div class="mb-1.5 flex items-baseline justify-center gap-1">
-              <span class="text-foreground text-sm font-bold tabular-nums sm:text-[15px]">
-                {{
-                  resource.format(
-                    (resourcesData.used[
-                      resource.key as keyof typeof resourcesData.used
-                    ] as number) || 0,
-                  )
-                }}
-              </span>
-              <span class="text-muted-foreground text-xs">/</span>
-              <span
-                class="text-xs font-medium"
-                :class="
-                  (resourcesData.limits[
-                    resource.key as keyof typeof resourcesData.limits
-                  ] as number) === 0 ||
-                  (resourcesData.max_limits[
-                    resource.key as keyof typeof resourcesData.max_limits
-                  ] as number) === 0
-                    ? 'text-green-500'
-                    : 'text-muted-foreground'
-                "
+          <div class="mb-1.5 flex items-center justify-between gap-1.5">
+            <div class="flex min-w-0 items-center gap-1.5">
+              <div
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/40 ring-1 ring-border/30"
               >
-                {{
-                  (resourcesData.limits[
-                    resource.key as keyof typeof resourcesData.limits
-                  ] as number) === 0 ||
-                  (resourcesData.max_limits[
-                    resource.key as keyof typeof resourcesData.max_limits
-                  ] as number) === 0
-                    ? "∞"
-                    : resource.format(
-                        (resourcesData.limits[
-                          resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0,
-                      )
-                }}
+                <component
+                  :is="item.icon"
+                  class="h-3.5 w-3.5"
+                  :class="item.accent"
+                />
+              </div>
+              <span
+                class="text-muted-foreground truncate text-xs font-medium"
+              >
+                {{ item.label }}
               </span>
             </div>
 
-            <div
-              v-if="
-                (resourcesData.limits[
-                  resource.key as keyof typeof resourcesData.limits
-                ] as number) !== 0 &&
-                (resourcesData.max_limits[
-                  resource.key as keyof typeof resourcesData.max_limits
-                ] as number) !== 0
-              "
-              class="space-y-1"
+            <span
+              v-if="!item.isUnlimited"
+              class="shrink-0 text-xs font-semibold tabular-nums"
+              :class="badgeClass[item.tone]"
             >
-              <div class="flex items-center justify-between text-[9px]">
-                <span class="text-muted-foreground font-medium">Usage</span>
-                <span
-                  class="px-1 py-0.5 rounded text-[9px] font-semibold"
-                  :class="{
-                    'bg-red-600/20 text-red-400 border border-red-500/30':
-                      getBadgeClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'overflow',
-                    'bg-red-500/15 text-red-400':
-                      getBadgeClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'high',
-                    'bg-yellow-500/15 text-yellow-400':
-                      getBadgeClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'medium',
-                    'bg-green-500/15 text-green-400':
-                      getBadgeClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'low',
-                  }"
-                >
-                  {{
-                    getUsagePercentage(
-                      (resourcesData.used[
-                        resource.key as keyof typeof resourcesData.used
-                      ] as number) || 0,
-                      (resourcesData.limits[
-                        resource.key as keyof typeof resourcesData.limits
-                      ] as number) || 0,
-                    )
-                  }}%
-                </span>
-              </div>
-              <div
-                class="bg-muted/60 h-1.5 w-full overflow-hidden rounded-full ring-1 ring-inset ring-border/30 dark:bg-muted/40"
-              >
-                <div
-                  class="h-full rounded-full transition-all duration-500"
-                  :class="{
-                    'bg-linear-to-r from-red-600 to-red-700 animate-pulse':
-                      isOverflow(
-                        (resourcesData.used[
-                          resource.key as keyof typeof resourcesData.used
-                        ] as number) || 0,
-                        (resourcesData.limits[
-                          resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0,
-                      ),
-                    'bg-linear-to-r from-red-500 to-red-600':
-                      !isOverflow(
-                        (resourcesData.used[
-                          resource.key as keyof typeof resourcesData.used
-                        ] as number) || 0,
-                        (resourcesData.limits[
-                          resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0,
-                      ) &&
-                      getProgressClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'danger',
-                    'bg-linear-to-r from-yellow-500 to-yellow-600':
-                      getProgressClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'warning',
-                    'bg-linear-to-r from-blue-500 to-indigo-500':
-                      getProgressClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === '',
-                    'bg-linear-to-r from-green-500 to-green-600':
-                      getProgressClass(
-                        getUsagePercentage(
-                          (resourcesData.used[
-                            resource.key as keyof typeof resourcesData.used
-                          ] as number) || 0,
-                          (resourcesData.limits[
-                            resource.key as keyof typeof resourcesData.limits
-                          ] as number) || 0,
-                        ),
-                      ) === 'success',
-                  }"
-                  :style="{
-                    width: `${Math.min(
-                      getUsagePercentage(
-                        (resourcesData.used[
-                          resource.key as keyof typeof resourcesData.used
-                        ] as number) || 0,
-                        (resourcesData.limits[
-                          resource.key as keyof typeof resourcesData.limits
-                        ] as number) || 0,
-                      ),
-                      100,
-                    )}%`,
-                  }"
-                ></div>
-              </div>
-            </div>
+              {{ item.percentage }}%
+            </span>
+            <InfinityIcon
+              v-else
+              class="h-3.5 w-3.5 shrink-0 text-emerald-400"
+            />
+          </div>
+
+          <div class="mb-1.5 flex items-baseline gap-1 leading-none">
+            <span
+              class="text-foreground text-xs font-bold tabular-nums sm:text-sm"
+              :class="{ 'text-red-400': item.overflow }"
+            >
+              {{ item.usedLabel }}
+            </span>
+            <span class="text-muted-foreground/70 text-xs">/</span>
+            <span
+              class="text-xs font-medium tabular-nums"
+              :class="
+                item.isUnlimited ? 'text-emerald-400' : 'text-muted-foreground'
+              "
+            >
+              {{ item.limitLabel }}
+            </span>
+          </div>
+
+          <div
+            v-if="!item.isUnlimited"
+            class="bg-muted/50 h-1.5 overflow-hidden rounded-full"
+          >
+            <div
+              class="h-full rounded-full transition-all duration-300"
+              :class="[
+                progressBarClass[item.tone],
+                item.overflow ? 'animate-pulse' : '',
+              ]"
+              :style="{ width: `${Math.min(item.percentage, 100)}%` }"
+            />
           </div>
         </div>
-        </Card>
       </div>
 
-      <div v-else class="text-muted-foreground py-8 text-center">
-        <p class="text-xs">Failed to load resources</p>
+      <div
+        v-else
+        class="flex items-center justify-center gap-2 py-6 text-center"
+      >
+        <AlertCircle class="text-muted-foreground h-4 w-4 opacity-50" />
+        <p class="text-muted-foreground text-xs">
+          {{ error || "Failed to load resources" }}
+        </p>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Center the last 3 cards (5th, 6th, 7th) on the second row for large screens */
-@media (min-width: 1024px) {
-  .resource-grid > :nth-child(5) {
-    grid-column-start: 1;
-  }
-  .resource-grid > :nth-child(6) {
-    grid-column-start: 2;
-  }
-  .resource-grid > :nth-child(7) {
-    grid-column-start: 3;
-  }
-}
-</style>
