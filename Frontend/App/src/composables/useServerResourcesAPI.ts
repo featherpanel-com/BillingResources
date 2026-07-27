@@ -67,6 +67,17 @@ export interface ServerResourcesResponse {
   total_used: ResourceLimits;
   server_overflow: OverflowCheck;
   total_overflow: OverflowCheck;
+  has_billing_plan?: boolean;
+  fixed_mode?: boolean;
+  resources_editable?: boolean;
+  locked_resources?: {
+    memory?: boolean;
+    cpu?: boolean;
+    disk?: boolean;
+    database_limit?: boolean;
+    backup_limit?: boolean;
+    allocation_limit?: boolean;
+  };
 }
 
 export interface UpdateServerResourcesRequest {

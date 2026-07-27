@@ -116,6 +116,9 @@ class ServerResourcesController
 
             $totalOverflow = ResourcesHelper::checkResourceOverflow($userId);
 
+            // Billing plans Fixed Mode: resources with slider_config.*.enabled=false are not editable
+            $planLocks = $this->resolvePlanResourceLocks($server);
+
             return ApiResponse::success([
                 'server' => [
                     'id' => (int) $server['id'],
@@ -130,6 +133,10 @@ class ServerResourcesController
                 'total_used' => $totalUsed,
                 'server_overflow' => $serverOverflow,
                 'total_overflow' => $totalOverflow,
+                'has_billing_plan' => $planLocks['has_billing_plan'],
+                'fixed_mode' => $planLocks['fixed_mode'],
+                'resources_editable' => $planLocks['resources_editable'],
+                'locked_resources' => $planLocks['locked_resources'],
             ], 'Server resources retrieved successfully', 200);
         } catch (\Exception $e) {
             App::getInstance(true)->getLogger()->error('Error getting server resources: ' . $e->getMessage());
@@ -201,9 +208,6 @@ class ServerResourcesController
                 return ApiResponse::error('Failed to load user resources', 'RESOURCE_LOAD_ERROR', 500);
             }
 
-            // Get user limits (now guaranteed to exist in DB)
-            $limits = ResourcesHelper::getUserResourcesOrDefault($userId);
-
             // Check if user already has overflow - if so, block all updates
             $overflowCheck = ResourcesHelper::checkResourceOverflow($userId);
             if ($overflowCheck['has_overflow']) {
@@ -219,26 +223,42 @@ class ServerResourcesController
                 );
             }
 
-            // Calculate current usage from server LIMITS (excluding the server being updated)
-            $used = ResourcesHelper::calculateUsedResourcesFromServerLimits($userId, [(int) $server['id']]);
-
             // Calculate available resources for THIS server (what can be allocated to it)
-            // Available = limit - used_by_other_servers
+            // Available = limit - used_by_other_servers (0 means no pool left — NOT unlimited)
             $available = ResourcesHelper::calculateAvailableResources($userId, [(int) $server['id']]);
+
+            // Billing plans Fixed Mode: reject edits to locked resources
+            $planLocks = $this->resolvePlanResourceLocks($server);
+            $lockedResources = $planLocks['locked_resources'];
+
+            if (!$planLocks['resources_editable']) {
+                return ApiResponse::error(
+                    'This server was deployed via a Fixed Mode billing plan. Resources cannot be edited here. Use plan upgrades/downgrades instead.',
+                    'FIXED_MODE_LOCKED',
+                    403
+                );
+            }
 
             // Prepare update data
             $updateData = [];
             $errors = [];
 
+            $currentMemory = (int) ($server['memory'] ?? 0);
+            $currentCpu = (int) ($server['cpu'] ?? 0);
+            $currentDisk = (int) ($server['disk'] ?? 0);
+            $currentDbLimit = (int) ($server['database_limit'] ?? 0);
+            $currentBackupLimit = (int) ($server['backup_limit'] ?? 0);
+            $currentAllocLimit = (int) ($server['allocation_limit'] ?? 0);
+
             // Validate and prepare memory
             if (isset($data['memory'])) {
                 $newMemory = (int) $data['memory'];
-                if ($newMemory < 1) {
+                if (!empty($lockedResources['memory']) && $newMemory !== $currentMemory) {
+                    $errors[] = 'Memory is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newMemory < 1) {
                     $errors[] = 'Memory must be at least 1 MB';
-                } elseif ($newMemory > $limits['memory_limit'] && $limits['memory_limit'] > 0) {
-                    $errors[] = 'Memory exceeds your total limit. Limit: ' . $limits['memory_limit'] . ' MB';
-                } elseif ($limits['memory_limit'] < $used['memory_limit'] + $newMemory && $limits['memory_limit'] > 0) {
-                    $errors[] = 'Memory would exceed your total limit. Available: ' . $available['memory_limit'] . ' MB (other servers use ' . $used['memory_limit'] . ' MB)';
+                } elseif ($newMemory > max($available['memory_limit'], $currentMemory)) {
+                    $errors[] = 'Memory exceeds your available pool. Available to allocate: ' . $available['memory_limit'] . ' MB (current: ' . $currentMemory . ' MB)';
                 } else {
                     $updateData['memory'] = $newMemory;
                 }
@@ -247,12 +267,12 @@ class ServerResourcesController
             // Validate and prepare CPU
             if (isset($data['cpu'])) {
                 $newCpu = (int) $data['cpu'];
-                if ($newCpu < 1) {
+                if (!empty($lockedResources['cpu']) && $newCpu !== $currentCpu) {
+                    $errors[] = 'CPU is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newCpu < 1) {
                     $errors[] = 'CPU must be at least 1%';
-                } elseif ($newCpu > $limits['cpu_limit'] && $limits['cpu_limit'] > 0) {
-                    $errors[] = 'CPU exceeds your total limit. Limit: ' . $limits['cpu_limit'] . '%';
-                } elseif ($limits['cpu_limit'] < $used['cpu_limit'] + $newCpu && $limits['cpu_limit'] > 0) {
-                    $errors[] = 'CPU would exceed your total limit. Available: ' . $available['cpu_limit'] . '% (other servers use ' . $used['cpu_limit'] . '%)';
+                } elseif ($newCpu > max($available['cpu_limit'], $currentCpu)) {
+                    $errors[] = 'CPU exceeds your available pool. Available to allocate: ' . $available['cpu_limit'] . '% (current: ' . $currentCpu . '%)';
                 } else {
                     $updateData['cpu'] = $newCpu;
                 }
@@ -261,12 +281,12 @@ class ServerResourcesController
             // Validate and prepare disk
             if (isset($data['disk'])) {
                 $newDisk = (int) $data['disk'];
-                if ($newDisk < 1) {
+                if (!empty($lockedResources['disk']) && $newDisk !== $currentDisk) {
+                    $errors[] = 'Disk is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newDisk < 1) {
                     $errors[] = 'Disk must be at least 1 MB';
-                } elseif ($newDisk > $limits['disk_limit'] && $limits['disk_limit'] > 0) {
-                    $errors[] = 'Disk exceeds your total limit. Limit: ' . $limits['disk_limit'] . ' MB';
-                } elseif ($limits['disk_limit'] < $used['disk_limit'] + $newDisk && $limits['disk_limit'] > 0) {
-                    $errors[] = 'Disk would exceed your total limit. Available: ' . $available['disk_limit'] . ' MB (other servers use ' . $used['disk_limit'] . ' MB)';
+                } elseif ($newDisk > max($available['disk_limit'], $currentDisk)) {
+                    $errors[] = 'Disk exceeds your available pool. Available to allocate: ' . $available['disk_limit'] . ' MB (current: ' . $currentDisk . ' MB)';
                 } else {
                     $updateData['disk'] = $newDisk;
                 }
@@ -275,17 +295,17 @@ class ServerResourcesController
             // Validate and prepare database_limit
             if (isset($data['database_limit'])) {
                 $newDbLimit = (int) $data['database_limit'];
-                if ($newDbLimit < 0) {
+                if (!empty($lockedResources['database_limit']) && $newDbLimit !== $currentDbLimit) {
+                    $errors[] = 'Database limit is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newDbLimit < 0) {
                     $errors[] = 'Database limit cannot be negative';
                 } else {
                     $currentDatabases = ServerDatabase::getDatabasesByServerId((int) $server['id']);
                     $currentDbCount = count($currentDatabases);
                     if ($newDbLimit < $currentDbCount) {
                         $errors[] = "Database limit cannot be less than current databases ({$currentDbCount})";
-                    } elseif ($newDbLimit > $limits['database_limit'] && $limits['database_limit'] > 0) {
-                        $errors[] = 'Database limit exceeds your total limit. Limit: ' . $limits['database_limit'];
-                    } elseif ($limits['database_limit'] < $used['database_limit'] + $newDbLimit && $limits['database_limit'] > 0) {
-                        $errors[] = 'Database limit would exceed your total limit. Available: ' . $available['database_limit'] . ' (other servers use ' . $used['database_limit'] . ')';
+                    } elseif ($newDbLimit > max($available['database_limit'], $currentDbLimit)) {
+                        $errors[] = 'Database limit exceeds your available pool. Available to allocate: ' . $available['database_limit'] . ' (current: ' . $currentDbLimit . ')';
                     } else {
                         $updateData['database_limit'] = $newDbLimit;
                     }
@@ -295,17 +315,17 @@ class ServerResourcesController
             // Validate and prepare backup_limit
             if (isset($data['backup_limit'])) {
                 $newBackupLimit = (int) $data['backup_limit'];
-                if ($newBackupLimit < 0) {
+                if (!empty($lockedResources['backup_limit']) && $newBackupLimit !== $currentBackupLimit) {
+                    $errors[] = 'Backup limit is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newBackupLimit < 0) {
                     $errors[] = 'Backup limit cannot be negative';
                 } else {
                     $currentBackups = Backup::getBackupsByServerId((int) $server['id']);
                     $currentBackupCount = count($currentBackups);
                     if ($newBackupLimit < $currentBackupCount) {
                         $errors[] = "Backup limit cannot be less than current backups ({$currentBackupCount})";
-                    } elseif ($newBackupLimit > $limits['backup_limit'] && $limits['backup_limit'] > 0) {
-                        $errors[] = 'Backup limit exceeds your total limit. Limit: ' . $limits['backup_limit'];
-                    } elseif ($limits['backup_limit'] < $used['backup_limit'] + $newBackupLimit && $limits['backup_limit'] > 0) {
-                        $errors[] = 'Backup limit would exceed your total limit. Available: ' . $available['backup_limit'] . ' (other servers use ' . $used['backup_limit'] . ')';
+                    } elseif ($newBackupLimit > max($available['backup_limit'], $currentBackupLimit)) {
+                        $errors[] = 'Backup limit exceeds your available pool. Available to allocate: ' . $available['backup_limit'] . ' (current: ' . $currentBackupLimit . ')';
                     } else {
                         $updateData['backup_limit'] = $newBackupLimit;
                     }
@@ -315,17 +335,17 @@ class ServerResourcesController
             // Validate and prepare allocation_limit
             if (isset($data['allocation_limit'])) {
                 $newAllocLimit = (int) $data['allocation_limit'];
-                if ($newAllocLimit < 1) {
+                if (!empty($lockedResources['allocation_limit']) && $newAllocLimit !== $currentAllocLimit) {
+                    $errors[] = 'Allocation limit is locked by your Fixed Mode billing plan and cannot be changed';
+                } elseif ($newAllocLimit < 1) {
                     $errors[] = 'Allocation limit must be at least 1';
                 } else {
                     $currentAllocations = Allocation::getByServerId((int) $server['id']);
                     $currentAllocCount = count($currentAllocations);
                     if ($newAllocLimit < $currentAllocCount) {
                         $errors[] = "Allocation limit cannot be less than current allocations ({$currentAllocCount})";
-                    } elseif ($newAllocLimit > $limits['allocation_limit'] && $limits['allocation_limit'] > 0) {
-                        $errors[] = 'Allocation limit exceeds your total limit. Limit: ' . $limits['allocation_limit'];
-                    } elseif ($limits['allocation_limit'] < $used['allocation_limit'] + $newAllocLimit && $limits['allocation_limit'] > 0) {
-                        $errors[] = 'Allocation limit would exceed your total limit. Available: ' . $available['allocation_limit'] . ' (other servers use ' . $used['allocation_limit'] . ')';
+                    } elseif ($newAllocLimit > max($available['allocation_limit'], $currentAllocLimit)) {
+                        $errors[] = 'Allocation limit exceeds your available pool. Available to allocate: ' . $available['allocation_limit'] . ' (current: ' . $currentAllocLimit . ')';
                     } else {
                         $updateData['allocation_limit'] = $newAllocLimit;
                     }
@@ -380,5 +400,100 @@ class ServerResourcesController
         }
 
         return $server;
+    }
+
+    /**
+     * Resolve Fixed Mode / slider locks from an active billingplans subscription.
+     *
+     * Resources with slider_config[key].enabled !== true are treated as Fixed Mode (not editable).
+     * Soft-depends on the billingplans addon via class_exists.
+     *
+     * @return array{
+     *     has_billing_plan: bool,
+     *     fixed_mode: bool,
+     *     resources_editable: bool,
+     *     locked_resources: array<string, bool>
+     * }
+     */
+    private function resolvePlanResourceLocks(array $server): array
+    {
+        $resourceKeys = [
+            'memory',
+            'cpu',
+            'disk',
+            'database_limit',
+            'backup_limit',
+            'allocation_limit',
+        ];
+
+        $unlocked = [];
+        foreach ($resourceKeys as $key) {
+            $unlocked[$key] = false;
+        }
+
+        $defaults = [
+            'has_billing_plan' => false,
+            'fixed_mode' => false,
+            'resources_editable' => true,
+            'locked_resources' => $unlocked,
+        ];
+
+        if (!class_exists(\App\Addons\billingplans\Chat\Subscription::class)) {
+            return $defaults;
+        }
+
+        $uuid = trim((string) ($server['uuid'] ?? ''));
+        if ($uuid === '') {
+            return $defaults;
+        }
+
+        try {
+            $subRow = \App\Addons\billingplans\Chat\Subscription::getByServerUuid($uuid);
+            if (!$subRow || !isset($subRow['id'])) {
+                return $defaults;
+            }
+
+            $status = (string) ($subRow['status'] ?? '');
+            if (!in_array($status, ['active', 'suspended'], true)) {
+                return $defaults;
+            }
+
+            // getById joins plan fields including slider_config
+            $subscription = \App\Addons\billingplans\Chat\Subscription::getById((int) $subRow['id']);
+            if (!$subscription) {
+                return $defaults;
+            }
+
+            $sliderConfig = $subscription['slider_config'] ?? null;
+            if (is_string($sliderConfig)) {
+                $sliderConfig = json_decode($sliderConfig, true);
+            }
+            if (!is_array($sliderConfig)) {
+                $sliderConfig = [];
+            }
+
+            $locked = [];
+            $anyEditable = false;
+            foreach ($resourceKeys as $key) {
+                $enabled = !empty($sliderConfig[$key]['enabled']);
+                $locked[$key] = !$enabled;
+                if ($enabled) {
+                    $anyEditable = true;
+                }
+            }
+
+            return [
+                'has_billing_plan' => true,
+                'fixed_mode' => !$anyEditable,
+                'resources_editable' => $anyEditable,
+                'locked_resources' => $locked,
+            ];
+        } catch (\Throwable $e) {
+            App::getInstance(true)->getLogger()->warning(
+                'Failed to resolve billing plan resource locks: ' . $e->getMessage()
+            );
+
+            return $defaults;
+        }
     }
 }

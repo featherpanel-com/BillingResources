@@ -86,6 +86,29 @@ const hasOverflow = computed(() => {
   );
 });
 
+// Fixed Mode billing plan: all resources locked (no sliders enabled)
+const isFixedModeLocked = computed(() => {
+  if (!serverData.value) return false;
+  return (
+    serverData.value.fixed_mode === true ||
+    serverData.value.resources_editable === false
+  );
+});
+
+const canEditResources = computed(() => {
+  return !hasOverflow.value && !isFixedModeLocked.value;
+});
+
+const isResourceLocked = (
+  key: keyof NonNullable<ServerResourcesResponse["locked_resources"]>
+) => {
+  return !!serverData.value?.locked_resources?.[key];
+};
+
+const maxEditable = (available: number, current: number): number => {
+  return Math.max(available || 0, current || 0);
+};
+
 // Check if this specific server is overflowing
 const serverHasOverflow = computed(() => {
   if (!serverData.value) return false;
@@ -102,36 +125,26 @@ const hasInvalidMinimums = computed(() => {
   );
 });
 
-// Check if edit form would cause overflow
+// Check if edit form would exceed available pool (0 pool is not unlimited)
 const wouldCauseOverflow = computed(() => {
   if (!serverData.value) return false;
 
-  const limits = serverData.value.limits;
-  const used = serverData.value.used;
+  const available = serverData.value.available_for_edit;
   const currentServer = serverData.value.server.resources;
 
-  // Calculate what total usage would be with new values
-  const newMemory = (editForm.value.memory || 0) - currentServer.memory;
-  const newCpu = (editForm.value.cpu || 0) - currentServer.cpu;
-  const newDisk = (editForm.value.disk || 0) - currentServer.disk;
-  const newDb =
-    (editForm.value.database_limit || 0) - currentServer.database_limit;
-  const newBackup =
-    (editForm.value.backup_limit || 0) - currentServer.backup_limit;
-  const newAlloc =
-    (editForm.value.allocation_limit || 0) - currentServer.allocation_limit;
-
   return (
-    (limits.memory_limit > 0 &&
-      used.memory_limit + newMemory > limits.memory_limit) ||
-    (limits.cpu_limit > 0 && used.cpu_limit + newCpu > limits.cpu_limit) ||
-    (limits.disk_limit > 0 && used.disk_limit + newDisk > limits.disk_limit) ||
-    (limits.database_limit > 0 &&
-      used.database_limit + newDb > limits.database_limit) ||
-    (limits.backup_limit > 0 &&
-      used.backup_limit + newBackup > limits.backup_limit) ||
-    (limits.allocation_limit > 0 &&
-      used.allocation_limit + newAlloc > limits.allocation_limit)
+    editForm.value.memory >
+      maxEditable(available.memory_limit, currentServer.memory) ||
+    editForm.value.cpu >
+      maxEditable(available.cpu_limit, currentServer.cpu) ||
+    editForm.value.disk >
+      maxEditable(available.disk_limit, currentServer.disk) ||
+    editForm.value.database_limit >
+      maxEditable(available.database_limit, currentServer.database_limit) ||
+    editForm.value.backup_limit >
+      maxEditable(available.backup_limit, currentServer.backup_limit) ||
+    editForm.value.allocation_limit >
+      maxEditable(available.allocation_limit, currentServer.allocation_limit)
   );
 });
 
@@ -223,6 +236,14 @@ const loadServerResources = async () => {
 };
 
 const openEditDialog = () => {
+  if (!canEditResources.value) {
+    if (isFixedModeLocked.value) {
+      toast.error(
+        "This server uses a Fixed Mode billing plan. Resources cannot be edited here."
+      );
+    }
+    return;
+  }
   if (serverData.value) {
     editForm.value = {
       memory: serverData.value.server.resources.memory,
@@ -311,17 +332,24 @@ onMounted(() => {
       </div>
 
       <!-- Edit Button -->
-      <div v-if="serverData" class="flex justify-center mb-8">
+      <div v-if="serverData" class="flex flex-col items-center gap-3 mb-8">
         <Button
           @click="openEditDialog"
           variant="default"
           size="lg"
-          :disabled="hasOverflow"
+          :disabled="!canEditResources"
           class="gap-2"
         >
           <Edit class="h-5 w-5" />
           Edit Resources
         </Button>
+        <p
+          v-if="isFixedModeLocked"
+          class="text-sm text-muted-foreground text-center max-w-md"
+        >
+          This server was deployed via a Fixed Mode billing plan. Resource
+          changes must be made through plan upgrades or downgrades.
+        </p>
       </div>
     </div>
 
@@ -1003,12 +1031,29 @@ onMounted(() => {
               v-model.number="editForm.memory"
               type="number"
               :min="1"
-              :max="serverData.limits.memory_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.memory_limit,
+                  serverData.server.resources.memory
+                )
+              "
+              :disabled="isResourceLocked('memory')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span v-if="isResourceLocked('memory')" class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available: {{ formatBytes(serverData.available.memory_limit) }} /
-              Max: {{ formatBytes(serverData.limits.memory_limit) }}
+              Max:
+              {{
+                formatBytes(
+                  maxEditable(
+                    serverData.available_for_edit.memory_limit,
+                    serverData.server.resources.memory
+                  )
+                )
+              }}
             </p>
           </div>
 
@@ -1023,13 +1068,29 @@ onMounted(() => {
               v-model.number="editForm.cpu"
               type="number"
               :min="1"
-              :max="serverData.limits.cpu_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.cpu_limit,
+                  serverData.server.resources.cpu
+                )
+              "
+              :disabled="isResourceLocked('cpu')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span v-if="isResourceLocked('cpu')" class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available:
               {{ formatPercentage(serverData.available.cpu_limit) }} / Max:
-              {{ formatPercentage(serverData.limits.cpu_limit) }}
+              {{
+                formatPercentage(
+                  maxEditable(
+                    serverData.available_for_edit.cpu_limit,
+                    serverData.server.resources.cpu
+                  )
+                )
+              }}
             </p>
           </div>
 
@@ -1044,12 +1105,29 @@ onMounted(() => {
               v-model.number="editForm.disk"
               type="number"
               :min="1"
-              :max="serverData.limits.disk_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.disk_limit,
+                  serverData.server.resources.disk
+                )
+              "
+              :disabled="isResourceLocked('disk')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span v-if="isResourceLocked('disk')" class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available: {{ formatBytes(serverData.available.disk_limit) }} /
-              Max: {{ formatBytes(serverData.limits.disk_limit) }}
+              Max:
+              {{
+                formatBytes(
+                  maxEditable(
+                    serverData.available_for_edit.disk_limit,
+                    serverData.server.resources.disk
+                  )
+                )
+              }}
             </p>
           </div>
 
@@ -1066,12 +1144,28 @@ onMounted(() => {
               v-model.number="editForm.database_limit"
               type="number"
               :min="0"
-              :max="serverData.limits.database_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.database_limit,
+                  serverData.server.resources.database_limit
+                )
+              "
+              :disabled="isResourceLocked('database_limit')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span
+                v-if="isResourceLocked('database_limit')"
+                class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available: {{ serverData.available.database_limit }} / Max:
-              {{ serverData.limits.database_limit }}
+              {{
+                maxEditable(
+                  serverData.available_for_edit.database_limit,
+                  serverData.server.resources.database_limit
+                )
+              }}
             </p>
           </div>
 
@@ -1088,12 +1182,28 @@ onMounted(() => {
               v-model.number="editForm.backup_limit"
               type="number"
               :min="0"
-              :max="serverData.limits.backup_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.backup_limit,
+                  serverData.server.resources.backup_limit
+                )
+              "
+              :disabled="isResourceLocked('backup_limit')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span
+                v-if="isResourceLocked('backup_limit')"
+                class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available: {{ serverData.available.backup_limit }} / Max:
-              {{ serverData.limits.backup_limit }}
+              {{
+                maxEditable(
+                  serverData.available_for_edit.backup_limit,
+                  serverData.server.resources.backup_limit
+                )
+              }}
             </p>
           </div>
 
@@ -1110,12 +1220,28 @@ onMounted(() => {
               v-model.number="editForm.allocation_limit"
               type="number"
               :min="1"
-              :max="serverData.limits.allocation_limit || undefined"
+              :max="
+                maxEditable(
+                  serverData.available_for_edit.allocation_limit,
+                  serverData.server.resources.allocation_limit
+                )
+              "
+              :disabled="isResourceLocked('allocation_limit')"
               class="w-full"
             />
             <p class="text-xs text-muted-foreground">
+              <span
+                v-if="isResourceLocked('allocation_limit')"
+                class="text-amber-400"
+                >Locked by Fixed Mode plan. </span
+              >
               Available: {{ serverData.available.allocation_limit }} / Max:
-              {{ serverData.limits.allocation_limit }}
+              {{
+                maxEditable(
+                  serverData.available_for_edit.allocation_limit,
+                  serverData.server.resources.allocation_limit
+                )
+              }}
             </p>
           </div>
         </div>
